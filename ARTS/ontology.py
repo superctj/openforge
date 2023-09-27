@@ -150,11 +150,12 @@ def builf_ontology_with_decomposed_column_semantics(
         device="cuda:0",
         threshold=0.9,
         checkpoint_per_cs: int = 0,
+        special_on_root_cs=False
 ):
     """
     column_semantics: [(tbl_id, col_name, decomposed_cs)]
     """
-    SAVE_DIRECTORY = "/home/jjxing/ssd/column_semantics_ontology_building/output/"
+    SAVE_DIRECTORY = "/home/jjxing/ssd/openforge/ARTS/output/"
     # initialize the ontology root
     ontologyRoot = OntologyNode(level=0, idx=0, text="OntologyRoot")
     OntologyNode.init__device_and_threshold(device=device, threshold=threshold)
@@ -227,7 +228,7 @@ def builf_ontology_with_decomposed_column_semantics(
             level = idx + 1
             if level > 6:
                 break
-            if level == 1:
+            if special_on_root_cs and level == 1:
                 if cs in level_1_cs_text_set:
                     level_1_node = nodeByLevel[1][level_1_cs_text_to_idx[cs]]
                 else:
@@ -338,40 +339,41 @@ def load_ontology_save_info(file_path, topk=10):
         # print(cs_cnts[:topk])
 
 
-def run_nyc_gpt_ontology():
+def run_nyc_gpt_ontology(special_on_root_cs=False):
     device = "cuda:0"
     threshold = 0.9
-    run_id = "nyc_gpt_3.5_column_semantics_all_root_token_as_root_save_merge_info"
+    run_id = "nyc_gpt_3.5_merge_root"
     import json
-    from ARTS.helpers.decompose_column_semantics import decompose_sentence_with_stanza, nlp
+    # from ARTS.helpers.decompose_column_semantics import decompose_sentence_with_stanza, nlp
+    #
+    # nyc_open_data = list(data_gov_mongo['metadata'].find({"organization.title": "City of New York"}))
+    # to_build_ontology = []
+    # for ds in (pbar := tqdm(nyc_open_data)):
+    #     pbar.set_description(f"Gathering column semantics: ")
+    #     csvfiles = list(data_gov_csv_file_col.find({"dataset_name": ds['name']}))
+    #     if csvfiles:
+    #         gpt = data_gov_gpt_annotation_col.find_one({"table_id": csvfiles[0]['_id']})
+    #         gpt_decomposed = data_gov_denpendency_parse_col.find_one({"table_id": csvfiles[0]['_id']})
+    #
+    #         if gpt_decomposed:
+    #             for col in gpt_decomposed['dp'].keys():
+    #                 if gpt_decomposed['dp'][col]['text']:
+    #                     to_build_ontology.append((csvfiles[0]['_id'], col, decompose_sentence_with_stanza(
+    #                         nlp(gpt_decomposed['dp'][col]['text']))))
 
-    nyc_open_data = list(data_gov_mongo['metadata'].find({"organization.title": "City of New York"}))
-    to_build_ontology = []
-    for ds in (pbar := tqdm(nyc_open_data)):
-        pbar.set_description(f"Gathering column semantics: ")
-        csvfiles = list(data_gov_csv_file_col.find({"dataset_name": ds['name']}))
-        if csvfiles:
-            gpt = data_gov_gpt_annotation_col.find_one({"table_id": csvfiles[0]['_id']})
-            gpt_decomposed = data_gov_denpendency_parse_col.find_one({"table_id": csvfiles[0]['_id']})
-
-            if gpt_decomposed:
-                for col in gpt_decomposed['dp'].keys():
-                    if gpt_decomposed['dp'][col]['text']:
-                        to_build_ontology.append((csvfiles[0]['_id'], col, decompose_sentence_with_stanza(
-                            nlp(gpt_decomposed['dp'][col]['text']))))
-
-                # for col in gpt_decomposed['decomposed'].keys():
-                # to_build_ontology.append((csvfiles[0]['_id'], col, gpt_decomposed['decomposed'][col]))
-                # print(csvfiles[0]['_id'])
-                # print(ds['name'])
-    print("Processing {} columns.".format(len(to_build_ontology)))
-    with open('/home/jjxing/ssd/column_semantics_ontology_building/explore/nyc_new_decomposed.json', 'w+') as outfile:
-        json.dump(to_build_ontology, outfile)
+    # for col in gpt_decomposed['decomposed'].keys():
+    # to_build_ontology.append((csvfiles[0]['_id'], col, gpt_decomposed['decomposed'][col]))
+    # print(csvfiles[0]['_id'])
+    # print(ds['name'])
+    # print("Processing {} columns.".format(len(to_build_ontology)))
+    with open('/home/jjxing/ssd/column_semantics_ontology_building/explore/nyc_new_decomposed.json', 'r') as infile:
+        to_build_ontology = json.load(infile)
+        # json.dump(to_build_ontology, outfile)
     builf_ontology_with_decomposed_column_semantics(to_build_ontology, run_id, device, threshold,
-                                                    checkpoint_per_cs=2000)
+                                                    checkpoint_per_cs=0, special_on_root_cs=special_on_root_cs)
 
 
-def run_nyc_official_ontology():
+def run_nyc_official_ontology(special_on_root_cs=False):
     import json
     from ARTS.helpers.decompose_column_semantics import decompose_sentence_with_stanza, nlp
     device = "cuda:0"
@@ -396,7 +398,8 @@ def run_nyc_official_ontology():
 
     print("Processing {} columns.".format(len(to_build_ontology)))
 
-    builf_ontology_with_decomposed_column_semantics(to_build_ontology, run_id, device, threshold, checkpoint_per_cs=0)
+    builf_ontology_with_decomposed_column_semantics(to_build_ontology, run_id, device, threshold, checkpoint_per_cs=0,
+                                                    special_on_root_cs=special_on_root_cs)
 
 
 if __name__ == "__main__":
@@ -406,8 +409,10 @@ if __name__ == "__main__":
     parser.add_argument("function", choices=["load", "run"])
     parser.add_argument("--ontology", "-o", type=str)
     parser.add_argument("--topk", "-k", type=int, default=10)
+    parser.add_argument("--special_on_root", "-s", action="store_true", default=False)
     args = parser.parse_args()
+    print(args)
     if args.function == "load":
         load_ontology_save_info(args.ontology, topk=args.topk)
     elif args.function == "run":
-        run_nyc_gpt_ontology()
+        run_nyc_gpt_ontology(special_on_root_cs=args.special_on_root)
