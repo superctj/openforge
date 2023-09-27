@@ -1,0 +1,9 @@
+pymongo
+pandas
+torch
+scipy
+sentence-transformers
+openai
+tenacity
+spacy
+spacy_stanza
