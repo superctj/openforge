@@ -1,4 +1,6 @@
 .idea/
+*.bin
+.pkl
 venv/
 __pycache__
 examples/

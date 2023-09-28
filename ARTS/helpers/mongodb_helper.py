@@ -22,11 +22,11 @@ dataverse_datafile_metadata_col = dataverse_mongo["datafile"]
 dataverse_gpt_annotation_col = dataverse_mongo["GPTannotation"]
 dataverse_denpendency_parse_col = dataverse_mongo["gpt_annotation_dp"]
 
-def readCSVFileWithTableID(table_id: str, nrows=10):
+def readCSVFileWithTableID(table_id: str, nrows=10, **kwargs):
     file_metadata = data_gov_csv_file_col.find_one({"_id": table_id})
     if file_metadata is None:
         raise Exception("No matched csvfile.")
     if file_metadata["loadable"] == False or file_metadata["file_path"] == '':
         raise FileNotFoundError
-    df = pd.read_csv(ROOT_DOWNLOAD + file_metadata['file_path'], header=0, nrows=nrows, on_bad_lines="skip")
+    df = pd.read_csv(ROOT_DOWNLOAD + file_metadata['file_path'], header=0, nrows=nrows, on_bad_lines="skip", **kwargs)
     return df

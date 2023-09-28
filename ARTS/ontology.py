@@ -30,7 +30,10 @@ class OntologyNode(object):
             self.init_embed()
 
     def add_matched_table_column(self, tbl_id, col_name, text=""):
+    def add_matched_table_column(self, tbl_id, col_name, text=""):
         self.tbl_column_matched.append((tbl_id, col_name))
+        if text:
+            self.text_to_tbl_column_matched[text].append((tbl_id, col_name))
         if text:
             self.text_to_tbl_column_matched[text].append((tbl_id, col_name))
 
@@ -248,6 +251,7 @@ def builf_ontology_with_decomposed_column_semantics(
                     ontologyRoot.add_child(level_1_node)
                     # print("create new node on level {}: {}".format(level, level_1_node))
                 level_1_node.add_matched_table_column(tbl_id=tbl_id, col_name=col_name, text=cs)
+                level_1_node.add_matched_table_column(tbl_id=tbl_id, col_name=col_name, text=cs)
                 tbl_to_nodes[tbl_id][col_name].append((level, level_1_node.idx))
                 parentNode = level_1_node
             else:
@@ -261,6 +265,7 @@ def builf_ontology_with_decomposed_column_semantics(
                     matched_child.add_text(text=cs)
                     matched_child.add_matched_table_column(
                         tbl_id=tbl_id, col_name=col_name, text=cs
+                        tbl_id=tbl_id, col_name=col_name, text=cs
                     )
                     parentNode = matched_child
                 else:
@@ -272,6 +277,7 @@ def builf_ontology_with_decomposed_column_semantics(
                     nodeByLevel[new_node.level].append(new_node)
                     # 3. add the node to it's parent node
                     parentNode.add_child(new_node)
+                    new_node.add_matched_table_column(tbl_id=tbl_id, col_name=col_name, text=cs)
                     new_node.add_matched_table_column(tbl_id=tbl_id, col_name=col_name, text=cs)
                     # print("create new node on level {}: {}".format(level, new_node))
 
