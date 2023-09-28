@@ -1,5 +1,6 @@
 .idea/
 *.bin
+openapi_key
 *.pkl
 venv/
 __pycache__
