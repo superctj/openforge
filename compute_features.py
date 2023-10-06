@@ -13,9 +13,9 @@ from ARTS.ontology import OntologyNode
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--arts_output_filepath", type=str, default="./ARTS/output/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_column_semantics_all_root_token_as_root_save_merge_info.pickle", help="Path to the ARTS output file")
+    parser.add_argument("--arts_output_filepath", type=str, default="/home/jjxing/ssd/openforge/ARTS/output/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle", help="Path to the ARTS output file")
 
-    parser.add_argument("--num_head_concepts", type=int, default=100, help="Number of head concepts to consider")
+    parser.add_argument("--num_head_concepts", type=int, default=200, help="Number of head concepts to consider")
 
     parser.add_argument("--num_val_samples", type=int, default=10000, help="Number of sample values per column for manual inspection")
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                 merged_fasttext_signature = fasttext_transformer.transform(merged_df[merged_concept].tolist())
 
                 name_sim = len(name_signature.intersection(merged_name_signature)) / len(name_signature.union(merged_name_signature))
-                value_sim = np.dot(fasttext_signature, merged_fasttext_signature)
+                value_sim = np.dot(fasttext_signature, merged_fasttext_signature) #/ (np.linalg.norm(fasttext_signature) * np.linalg.norm(merged_fasttext_signature))
 
                 tr_te_data.append(([name_sim, value_sim], 1))
         
@@ -71,7 +71,7 @@ if __name__ == "__main__":
                 merged_fasttext_signature = fasttext_transformer.transform(merged_df[merged_concept].tolist())
 
                 name_sim = len(name_signature.intersection(merged_name_signature)) / len(name_signature.union(merged_name_signature))
-                value_sim = np.dot(fasttext_signature, merged_fasttext_signature)
+                value_sim = np.dot(fasttext_signature, merged_fasttext_signature) #/ (np.linalg.norm(fasttext_signature) * np.linalg.norm(merged_fasttext_signature))
 
                 tr_te_data.append(([name_sim, value_sim], 0))
 
@@ -79,5 +79,5 @@ if __name__ == "__main__":
         #     df = readCSVFileWithTableID(table_id, nrows=args.num_val_samples)
         #     # logger.info(df[col_name].tolist())
 
-    save_f = open("./data/exp_tr_te_data.pkl", "wb")
+    save_f = open(f"./data/arts_num-head-concepts-{args.num_head_concepts}.pkl", "wb")
     pickle.dump(tr_te_data, save_f)
