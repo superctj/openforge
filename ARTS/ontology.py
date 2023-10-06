@@ -30,7 +30,6 @@ class OntologyNode(object):
             self.init_embed()
 
     def add_matched_table_column(self, tbl_id, col_name, text=""):
-    def add_matched_table_column(self, tbl_id, col_name, text=""):
         self.tbl_column_matched.append((tbl_id, col_name))
         if text:
             self.text_to_tbl_column_matched[text].append((tbl_id, col_name))
@@ -264,7 +263,6 @@ def builf_ontology_with_decomposed_column_semantics(
                     #     print("level {}, {} merged to node: ".format(level, cs), matched_child)
                     matched_child.add_text(text=cs)
                     matched_child.add_matched_table_column(
-                        tbl_id=tbl_id, col_name=col_name, text=cs
                         tbl_id=tbl_id, col_name=col_name, text=cs
                     )
                     parentNode = matched_child
