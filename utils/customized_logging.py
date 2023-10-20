@@ -1,6 +1,9 @@
 import logging
 
 
+logging_level_map = {"CRITICAL": 50, "ERROR": 40, "WARNING": 30, "INFO": 20, "DEBUG": 10, "NOTSET": 0}
+
+
 def get_logger(log_filepath, level=logging.INFO):
     logger = logging.getLogger(log_filepath)
     logger.setLevel(level)
