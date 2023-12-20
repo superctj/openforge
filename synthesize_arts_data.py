@@ -18,14 +18,14 @@ CONSTANT = 1e-9
 VALUE_SIGNATURE_ATTEMPTS = 100
 
 
-def compute_value_signature(col_list, feature_extractor):
+def compute_value_signature(col_list, feature_extractor, num_val_samples):
     # randomly pick a corresponding table column to compute value signature
     count = 0
 
     while count < VALUE_SIGNATURE_ATTEMPTS:
         rnd_idx = random.randrange(len(col_list))
         table_id, col_name = col_list[rnd_idx]
-        df = readCSVFileWithTableID(table_id, usecols=[col_name], nrows=args.num_val_samples).astype(str)
+        df = readCSVFileWithTableID(table_id, usecols=[col_name], nrows=num_val_samples).astype(str)
         fasttext_signature = feature_extractor.transform(df[col_name].tolist())
         if len(fasttext_signature) != 0:
             break
