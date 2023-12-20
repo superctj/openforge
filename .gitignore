@@ -8,3 +8,4 @@ examples/
 logs/
 **/output
 plots/
+models/
