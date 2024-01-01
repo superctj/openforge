@@ -1,7 +1,6 @@
-"""Most of this module is from the D3L codebase.
+"""This module is adapted from the D3L codebase.
 
 https://github.com/alex-bogatu/d3l/blob/main/d3l/indexing/feature_extraction/values/fasttext_embedding_transformer.py
-https://github.com/alex-bogatu/d3l/blob/main/d3l/indexing/feature_extraction/schema/qgram_transformer.py
 https://github.com/alex-bogatu/d3l/blob/main/d3l/utils/constants.py
 https://github.com/alex-bogatu/d3l/blob/main/d3l/utils/functions.py
 """
@@ -13,7 +12,7 @@ import re
 import shutil
 import unicodedata
 
-from typing import Iterable, List, Optional, Set
+from typing import Iterable, Optional, Set
 from urllib.request import urlopen
 
 import numpy as np
@@ -24,7 +23,7 @@ from openforge.ARTS.helpers.mongodb_helper import readCSVFileWithTableID
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-STOPWORDS = set(stopwords.words('english'))
+STOPWORDS = set(stopwords.words("english"))
 
 SYMBPATT = r"\@" + re.escape(
     u"".join(chr(i) for i in range(0xFFFF) if unicodedata.category(chr(i)) == "Sc")
@@ -50,9 +49,8 @@ NUMSYMB = re.compile(
 )
 
 FASTTEXTURL = "https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/"
-GLOVEURL = "http://nlp.stanford.edu/data/"
+# GLOVEURL = "http://nlp.stanford.edu/data/"
 
-CONSTANT = 1e-9
 VALUE_SIGNATURE_ATTEMPTS = 100
 
 
@@ -73,62 +71,6 @@ def shingles(value: str) -> Iterable[str]:
     delimiterPattern = re.compile(r"[^\w\s\-_@&]+")
     for shingle in delimiterPattern.split(value):
         yield re.sub(r"\s+", " ", shingle.strip().lower())
-
-
-class QGramTransformer:
-    def __init__(self, qgram_size: Optional[int] = None):
-        """
-        This object performs qgram extraction.
-        Parameters
-        ----------
-        qgram_size : Optional[int]
-            The default qgram size.
-        """
-        self._qgram_size = qgram_size
-
-    @property
-    def qgram_size(self) -> Optional[int]:
-        return self._qgram_size
-
-    def transform(
-        self, input_string: str, qgram_size: Optional[int] = None
-    ) -> List[str]:
-        """
-        Generate a collection of qgrams of configured size from the given string.
-        Parameters
-        ----------
-        input_string : str
-            The input string to transform.
-        qgram_size : Optional[int]
-            The size of each qgram.
-            If None, the upper-level size (passed when the object was created) will be used.
-
-        Returns
-        -------
-        List[str]
-            A collection of qgrams of the given string.
-
-        """
-
-        if qgram_size is None and self._qgram_size is None:
-            raise ValueError(
-                "Expected a qgram_size in this call or at the object level."
-            )
-
-        elif qgram_size is None:
-            qgram_size = self._qgram_size
-
-        qgrams = []
-        for word in re.split(r"\W+", input_string.lower().strip()):
-            word = word.strip()
-            if len(word) < 1:
-                continue
-            if len(word) <= qgram_size:
-                qgrams.append(word)
-                continue
-            for i in range((len(word) - qgram_size) + 1):
-                qgrams.append(word[i : i + qgram_size])
-        return qgrams
 
 
 class FasttextTransformer:
@@ -321,8 +263,11 @@ class FasttextTransformer:
         np.ndarray
             A vector of float numbers.
         """
+        # vector = self._embedding_model.get_word_vector(
+        #     str(word).strip().lower(), np.random.randn(self.get_embedding_dimension())
+        # )
         vector = self._embedding_model.get_word_vector(
-            str(word).strip().lower(), np.random.randn(self.get_embedding_dimension())
+            str(word).strip().lower()
         )
         return vector
 
@@ -395,13 +340,25 @@ class FasttextTransformer:
              A Numpy vector representing the mean of all token embeddings.
         """
 
-        embeddings = [self.get_vector(token) for token in self.get_tokens(input_values)]
+        # embeddings = [self.get_vector(token) for token in self.get_tokens(input_values)]
+        tokenset = set()
+        for value in input_values:
+            value = value.lower().replace("\n", " ").strip()
+            for shingle in shingles(value):
+                tokens = [t for t in re.split(r"\s+", shingle)]
+
+                if len(tokens) < 1:
+                    continue
+
+                tokenset.update(tokens)
+
+        embeddings = [self.get_vector(token) for token in tokenset]
         if len(embeddings) == 0:
             return np.empty(0)
         return np.mean(np.array(embeddings), axis=0)
 
 
-def compute_value_signature(col_list, feature_extractor, num_val_samples):
+def compute_fasttext_signature(col_list, feature_extractor, num_val_samples: int):
     # randomly pick a corresponding table column to compute value signature
     count = 0
 
@@ -409,6 +366,7 @@ def compute_value_signature(col_list, feature_extractor, num_val_samples):
         rnd_idx = random.randrange(len(col_list))
         table_id, col_name = col_list[rnd_idx]
         df = readCSVFileWithTableID(table_id, usecols=[col_name], nrows=num_val_samples).astype(str)
+
         fasttext_signature = feature_extractor.transform(df[col_name].tolist())
         if len(fasttext_signature) != 0:
             break
@@ -416,11 +374,3 @@ def compute_value_signature(col_list, feature_extractor, num_val_samples):
             count += 1
 
     return fasttext_signature
-
-
-def compute_name_similarity(name_sig1, name_sig2):
-    return len(name_sig1.intersection(name_sig2)) / len(name_sig1.union(name_sig2))
-
-
-def compute_value_similarity(value_sig1, value_sig2):
-    return np.dot(value_sig1, value_sig2) / (np.linalg.norm(value_sig1) * np.linalg.norm(value_sig2) + CONSTANT)
