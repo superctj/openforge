@@ -3,11 +3,11 @@ import os
 import pickle
 import random
 
-from datetime import datetime
-
 from openforge.ARTS.ontology import OntologyNode
 from openforge.utils.custom_logging import get_custom_logger
-from openforge.utils.feature_extraction import FasttextTransformer, QGramTransformer, compute_value_signature, compute_name_similarity, compute_value_similarity
+from openforge.feature_extraction.fb_fasttext import FasttextTransformer, compute_fasttext_signature
+from openforge.feature_extraction.qgram import QGramTransformer
+from openforge.feature_extraction.similarity_metrics import cosine_similarity, jaccard_index
 
 
 if __name__ == "__main__":
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
         # use head concept as a reference point
         i_name_signature = set(qgram_transformer.transform(str(node_i)))
-        i_fasttext_signature = compute_value_signature(
+        i_fasttext_signature = compute_fasttext_signature(
             node_i.text_to_tbl_column_matched[str(node_i)], fasttext_transformer, args.num_val_samples)
         
         if len(i_fasttext_signature) == 0:
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
             logger.info(f"Concept {j}: {node_j}")
             j_name_signature = set(qgram_transformer.transform(str(node_j)))
-            j_fasttext_signature = compute_value_signature(
+            j_fasttext_signature = compute_fasttext_signature(
                 node_j.text_to_tbl_column_matched[str(node_j)], fasttext_transformer, args.num_val_samples)
             
             if len(j_fasttext_signature) == 0:
@@ -79,10 +79,10 @@ if __name__ == "__main__":
                 continue
                 
             # compute name similarity
-            name_sim = compute_name_similarity(i_name_signature, j_name_signature)
+            name_sim = jaccard_index(i_name_signature, j_name_signature)
 
             # compute value similarity
-            value_sim = compute_value_similarity(i_fasttext_signature, j_fasttext_signature)
+            value_sim = cosine_similarity(i_fasttext_signature, j_fasttext_signature)
 
             evidence_data.append(((i, j), [name_sim, value_sim]))
 
