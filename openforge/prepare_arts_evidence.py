@@ -8,19 +8,21 @@ from openforge.utils.custom_logging import get_custom_logger
 from openforge.feature_extraction.fb_fasttext import FasttextTransformer, compute_fasttext_signature
 from openforge.feature_extraction.qgram import QGramTransformer
 from openforge.feature_extraction.similarity_metrics import cosine_similarity, jaccard_index
+from openforge.utils.util import get_proj_dir
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--arts_output_filepath", type=str, default="/home/tianji/openforge/data/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle", help="Path to the ARTS output file.")
+    
+    parser.add_argument("--arts_output_filepath", type=str, default="/home/congtj/openforge/data/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle", help="Path to the ARTS output file.") # "/home/tianji/openforge/data/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle"
 
     parser.add_argument("--arts_level", type=int, default=2, help="Level of the ARTS ontology to extract concepts.")
 
     parser.add_argument("--num_head_concepts", type=int, default=4, help="Number of head concepts to consider.")
 
-    parser.add_argument("--num_val_samples", type=int, default=10000, help="Number of maximum sample values per column for computing features.")
+    parser.add_argument("--fasttext_model_dir", type=str, default="/ssd/congtj", help="Directory containing fasttext model weights.")
 
-    parser.add_argument("--log_dir", type=str, default="/home/tianji/openforge/logs", help="Logging directory.")
+    parser.add_argument("--num_val_samples", type=int, default=10000, help="Number of maximum sample values per column for computing features.")
 
     parser.add_argument("--log_level", type=str, default="INFO", help="Logging level.")
 
@@ -31,7 +33,8 @@ if __name__ == "__main__":
     random.seed(args.random_seed)
 
     # create logging directory
-    log_dir = os.path.join(args.log_dir, f"arts_top-{args.num_head_concepts}-concepts_evidence")
+    proj_dir = get_proj_dir(__file__, file_level=2)
+    log_dir = os.path.join(proj_dir, f"logs/arts_top-{args.num_head_concepts}-concepts_evidence")
     logger = get_custom_logger(log_dir, args.log_level)
     logger.info(args)
 
@@ -44,7 +47,7 @@ if __name__ == "__main__":
     nodeByLevel[args.arts_level].sort(key=lambda x:len(x.tbl_column_matched), reverse=True)
 
     qgram_transformer = QGramTransformer(qgram_size=3)
-    fasttext_transformer = FasttextTransformer()
+    fasttext_transformer = FasttextTransformer(cache_dir=args.fasttext_model_dir)
     evidence_data = []
 
     for i, node_i in enumerate(nodeByLevel[args.arts_level][:args.num_head_concepts]):
@@ -66,7 +69,7 @@ if __name__ == "__main__":
             continue
 
         for j, node_j in enumerate(nodeByLevel[args.arts_level][:args.num_head_concepts]):
-            if j == i:
+            if j <= i:
                 continue
 
             logger.info(f"Concept {j}: {node_j}")
@@ -84,8 +87,9 @@ if __name__ == "__main__":
             # compute value similarity
             value_sim = cosine_similarity(i_fasttext_signature, j_fasttext_signature)
 
-            evidence_data.append(((i, j), [name_sim, value_sim]))
+            evidence_data.append(([name_sim, value_sim], 0))
 
-    evidence_save_filepath = f"./data/arts_top-{args.num_head_concepts}-concepts_evidence.pkl"
+    evidence_save_filepath = os.path.join(proj_dir, f"data/arts_top-{args.num_head_concepts}-concepts_evidence.pkl")
+
     with open(evidence_save_filepath, "wb") as f:
         pickle.dump(evidence_data, f)
