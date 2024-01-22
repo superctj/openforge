@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--arts_level", type=int, default=2, help="Level of the ARTS ontology to extract concepts.")
 
-    parser.add_argument("--num_head_concepts", type=int, default=4, help="Number of head concepts to consider.")
+    parser.add_argument("--num_head_concepts", type=int, default=3, help="Number of head concepts to consider.")
 
     parser.add_argument("--fasttext_model_dir", type=str, default="/ssd/congtj", help="Directory containing fasttext model weights.")
 
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # create logging directory
     proj_dir = get_proj_dir(__file__, file_level=2)
-    log_dir = os.path.join(proj_dir, f"logs/arts_top-{args.num_head_concepts}-concepts_evidence")
+    log_dir = os.path.join(proj_dir, f"logs/arts_top-{args.num_head_concepts}-concepts_adhoc-evidence")
     logger = get_custom_logger(log_dir, args.log_level)
     logger.info(args)
 
@@ -50,6 +50,14 @@ if __name__ == "__main__":
     fasttext_transformer = FasttextTransformer(cache_dir=args.fasttext_model_dir)
     evidence_data = []
 
+    reference_node = nodeByLevel[args.arts_level][0]
+    reference_node_name = reference_node.texts[2]
+    
+    reference_node_name_signature = set(qgram_transformer.transform(reference_node_name))
+    reference_node_fasttext_signature = compute_fasttext_signature(
+        reference_node.text_to_tbl_column_matched[reference_node_name], fasttext_transformer, args.num_val_samples
+    )
+
     for i, node_i in enumerate(nodeByLevel[args.arts_level][:args.num_head_concepts]):
         # node is the head concept
         assert str(node_i) == node_i.texts[0]
@@ -58,6 +66,8 @@ if __name__ == "__main__":
 
         logger.info("=" * 50)
         logger.info(f"Concept {i}: {node_i}")
+        logger.info(f"Merged concepts: {node_i.texts}")
+        # logger.info(f"Corresponding table columns: {node_i.text_to_tbl_column_matched}")
 
         # use head concept as a reference point
         i_name_signature = set(qgram_transformer.transform(str(node_i)))
@@ -68,28 +78,43 @@ if __name__ == "__main__":
             logger.info(f"Cannot compute value signature for concept {i}: {node_i}.")
             continue
 
-        for j, node_j in enumerate(nodeByLevel[args.arts_level][:args.num_head_concepts]):
-            if j <= i:
-                continue
+        # compute name similarity
+        name_sim = jaccard_index(i_name_signature, reference_node_name_signature)
 
-            logger.info(f"Concept {j}: {node_j}")
-            j_name_signature = set(qgram_transformer.transform(str(node_j)))
-            j_fasttext_signature = compute_fasttext_signature(
-                node_j.text_to_tbl_column_matched[str(node_j)], fasttext_transformer, args.num_val_samples)
+        # compute value similarity
+        value_sim = cosine_similarity(i_fasttext_signature, reference_node_fasttext_signature)
+
+        logger.info(f"Name similarity: {name_sim}")
+        logger.info(f"Value similarity: {value_sim}")
+
+        evidence_data.append(([name_sim, value_sim], 1))
+
+        # for j in range(1, len(node_i.texts)):
+        #     logger.info(f"Concept {i}-{j}: {node_i.texts[j]}")
             
-            if len(j_fasttext_signature) == 0:
-                logger.info(f"Cannot compute value signature for concept {j}: {node_j}.")
-                continue
+        #     j_name_signature = set(
+        #         qgram_transformer.transform(str(node_i.texts[j]))
+        #     )
+        #     j_fasttext_signature = compute_fasttext_signature(
+        #         node_i.text_to_tbl_column_matched[str(node_i.texts[j])], fasttext_transformer, args.num_val_samples
+        #     )
+            
+        #     if len(j_fasttext_signature) == 0:
+        #         logger.info(f"Cannot compute value signature for concept {i}-{j}: {node_i.texts[j]}.")
+        #         continue
                 
-            # compute name similarity
-            name_sim = jaccard_index(i_name_signature, j_name_signature)
+        #     # compute name similarity
+        #     name_sim = jaccard_index(i_name_signature, j_name_signature)
 
-            # compute value similarity
-            value_sim = cosine_similarity(i_fasttext_signature, j_fasttext_signature)
+        #     # compute value similarity
+        #     value_sim = cosine_similarity(i_fasttext_signature, j_fasttext_signature)
 
-            evidence_data.append(([name_sim, value_sim], 0))
+        #     logger.info(f"Name similarity: {name_sim}")
+        #     logger.info(f"Value similarity: {value_sim}")
 
-    evidence_save_filepath = os.path.join(proj_dir, f"data/arts_top-{args.num_head_concepts}-concepts_evidence.pkl")
+        #     evidence_data.append(([name_sim, value_sim], 1))
+    
+    evidence_save_filepath = os.path.join(proj_dir, f"data/arts_top-{args.num_head_concepts}-concepts_adhoc-evidence.pkl")
 
     with open(evidence_save_filepath, "wb") as f:
         pickle.dump(evidence_data, f)
