@@ -58,6 +58,7 @@ if __name__ == "__main__":
 
         logger.info("=" * 50)
         logger.info(f"Concept {i}: {node_i}")
+        logger.info(f"Merged concepts: {node_i.texts}")
 
         # use head concept as a reference point
         i_name_signature = set(qgram_transformer.transform(str(node_i)))
