@@ -1,4 +1,4 @@
-name: openforge
+name: openforge-pyagrum
 channels:
   - anaconda
   - conda-forge
@@ -257,4 +257,3 @@ dependencies:
   - zstd=1.5.5=hc292b87_0
   - pip:
       - pydot-ng==2.0.0
-prefix: /home/tianji/miniconda3/envs/openforge
