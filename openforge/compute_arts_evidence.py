@@ -38,10 +38,10 @@ if __name__ == "__main__":
     proj_dir = get_proj_dir(__file__, file_level=2)
     
     data_dir = os.path.join(proj_dir, f"data/arts_top-{args.num_head_concepts}-concepts_evidence")
-    create_dir(data_dir)
+    create_dir(data_dir, force=True)
 
     log_dir = os.path.join(proj_dir, f"logs/arts_top-{args.num_head_concepts}-concepts_evidence")
-    create_dir(log_dir)
+    create_dir(log_dir, force=True)
 
     logger = get_custom_logger(log_dir, args.log_level)
     logger.info(args)
@@ -60,11 +60,11 @@ if __name__ == "__main__":
     evidence_data = []
 
     csv_output_filepath = os.path.join(data_dir, "arts_concept_dataset.csv")
-    with open(csv_output_filepath, "w") as csv_file:
-        field_names = ["concept 1", "concept2", "name similarity", "value similarity", "label"]
-        
-        csv_writer = csv.DictWriter(csv_file, fieldnames=field_names)
-        csv_writer.writeheader()
+    csv_file = open(csv_output_filepath, "w")
+    field_names = ["concept 1", "concept 2", "name similarity", "value similarity", "label"]
+    
+    csv_writer = csv.DictWriter(csv_file, fieldnames=field_names)
+    csv_writer.writeheader()
 
     for i, node_i in enumerate(nodeByLevel[args.arts_level][:args.num_head_concepts]):
         # node_i is the head concept
@@ -162,6 +162,8 @@ if __name__ == "__main__":
                         "value similarity": value_sim,
                         "label": 0
                     })
+
+    csv_file.close()
 
     evidence_save_filepath = os.path.join(data_dir, "arts_evidence.pkl")
     with open(evidence_save_filepath, "wb") as f:
