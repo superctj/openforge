@@ -15,3 +15,8 @@ def get_proj_dir(filepath: str, file_level: int=3) -> str:
     abs_path = os.path.abspath(filepath)
     proj_dir = "/".join(abs_path.split("/")[:-file_level])
     return proj_dir
+
+
+def create_dir(dir_path: str):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
