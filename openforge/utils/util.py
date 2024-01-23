@@ -1,4 +1,5 @@
 import os
+import shutil
 
 
 def get_proj_dir(filepath: str, file_level: int=3) -> str:
@@ -17,6 +18,12 @@ def get_proj_dir(filepath: str, file_level: int=3) -> str:
     return proj_dir
 
 
-def create_dir(dir_path: str):
+def create_dir(dir_path: str, force: bool=False):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
+    else:
+        if force:
+            shutil.rmtree(dir_path)
+            os.makedirs(dir_path)
+        else:
+            raise ValueError(f"Directory {dir_path} already exists and not forced to create the directory.")
