@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_level", type=str, default="INFO", help="Logging level.")
 
     parser.add_argument("--random_seed", type=int, default=12345, help="Random seed.")
+
     args = parser.parse_args()
 
     # fix random seed
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     with open(args.arts_output_filepath, "rb") as f:
         data = pickle.load(f)
         nodeByLevel = data["nodeByLevel"]
-        OntologyNode.init__device_and_threshold(device=data["device"], threshold=data["device"])
+        OntologyNode.init__device_and_threshold(device=data["device"], threshold=data["threshold"])
         OntologyNode.embeddingByLevelAndIdx = data["embeddings"]
 
     nodeByLevel[args.arts_level].sort(key=lambda x:len(x.tbl_column_matched), reverse=True)
