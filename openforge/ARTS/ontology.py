@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 import pickle
 
-from ARTS.helpers.mongodb_helper import *
+from openforge.ARTS.helpers.mongodb_helper import *
 # from ARTS.helpers.openai_helper import *
 
 
