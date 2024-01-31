@@ -244,7 +244,7 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
             else:
                 relation_variable_label = 0
             
-            relation_variable_name = f"R_{i+1}_{j+1}"
+            relation_variable_name = f"R_{i+1}-{j+1}"
             mrf_data.append(MRFEntry(
                 label_i,
                 label_j,
