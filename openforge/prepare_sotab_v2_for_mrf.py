@@ -273,7 +273,7 @@ if __name__ == "__main__":
     
     parser.add_argument("--output_dir", type=str, default="/ssd/congtj/openforge/sotab_v2/artifact", help="Path to the output directory.")
 
-    parser.add_argument("--log_dir", type=str, default="/home/congtj/openforge/logs/sotab_synthesized_data", help="Directory to store logs.")
+    parser.add_argument("--log_dir", type=str, default="/home/congtj/openforge/logs/sotab_mrf_synthesized_data", help="Directory to store logs.")
     
     args = parser.parse_args()
 
