@@ -43,74 +43,81 @@ if __name__ == "__main__":
     mrf = gum.MarkovRandomField()
     variables = []
 
-    binary_pairs = []
-    pair_varidx_map = {}
-    unary_table = []
+    unary_cliques = [] # list of unary clique ids (tuple of two integers)
+    unaryid_varidx_map = {} # map from unary clique id to corresponding variable index in 'variables'
+    unary_table = [] # for comparing priors and posteriors
 
-    # Add variables
+    # Add variables and unary factors
     for row in sotab_df.itertuples():
         var_name = row.relation_variable_name
-        idx1, idx2 = var_name.split("_")[1].split("-")        
+        unary_id = tuple(
+            int(elem) for elem in var_name.split("_")[1].split("-")
+        )
         
         var = gum.IntegerVariable(
             var_name,
-            f"Relation variable between concepts {idx1} and {idx2}",
+            f"Relation variable over pair of concepts {unary_id[0]} and {unary_id[1]}",
             [0, 1]
         )
         mrf.add(var)
         variables.append(var)
-        
-        key = (int(idx1), int(idx2))
-        pair_varidx_map[key] = len(variables) - 1
-        binary_pairs.append(key)
+
+        unaryid_varidx_map[unary_id] = len(variables) - 1
+        unary_cliques.append(unary_id)
 
         confdc_score = row.positive_label_confidence_score
-        unary_table.append([1 - confdc_score, confdc_score])
+        prior = [1 - confdc_score, confdc_score]
 
-    # Add unary factors
-    for i, var in enumerate(variables):
-        p = gum.Potential().add(var).fillWith(unary_table[i])
-        mrf.addFactor(p)
+        unary_table.append(prior)
+        unary_factor = gum.Potential().add(var).fillWith(prior)
+        mrf.addFactor(unary_factor)
+    
+    assert len(mrf.names()) == len(variables)
+    assert len(mrf.names()) == len(unary_cliques)
+    assert len(mrf.names()) == len(unaryid_varidx_map)
+    assert len(mrf.names()) == len(unary_table)
+    logger.info(f"Number of MRF variables / unary factors: {len(mrf.names())}")
+    logger.info(f"MRF variables:\n{mrf.names()}")
+    logger.info(f"MRF unary factors:\n{mrf.factors()}")
     
     # Add binary and ternary factors
-    all_ternary_indices = set()
+    ternary_cliques = set() # set of ternary clique ids (sorted tuples)
 
-    for i, pair1 in enumerate(binary_pairs):
-        for pair2 in binary_pairs[i+1:]:
-            intersect = set(pair1).intersection(set(pair2))
-            if len(intersect) == 1:
-                var1 = variables[pair_varidx_map[pair1]]
-                var2 = variables[pair_varidx_map[pair2]]
+    for i, unary_id1 in enumerate(unary_cliques):
+        for unary_id2 in unary_cliques[i+1:]:
+            intersect = set(unary_id1).intersection(set(unary_id2))
+            
+            if len(intersect) == 1: # variables involving a common concept
+                var1 = variables[unaryid_varidx_map[unary_id1]]
+                var2 = variables[unaryid_varidx_map[unary_id2]]
                 
-                p = gum.Potential().add(var1).add(var2).fillWith(BINARY_TABLE)
-                mrf.addFactor(p)
+                binary_factor = gum.Potential().add(var1).add(var2).fillWith(BINARY_TABLE)
+                mrf.addFactor(binary_factor)
 
-                ternary_indices = list(set(pair1).union(set(pair2)))
-                ternary_indices.sort()
+                ternary_ids = list(set(unary_id1).union(set(unary_id2)))
+                ternary_ids.sort()
 
-                if tuple(ternary_indices) in all_ternary_indices:
+                if tuple(ternary_ids) in ternary_cliques:
                     continue
                 
-                ternary_factor = []
-                for i in range(len(ternary_indices)):
-                    for j in range(i+1, len(ternary_indices)):
-                        pair = (ternary_indices[i], ternary_indices[j])
+                pairs_in_ternary_clique = []
+                for j in range(len(ternary_ids)):
+                    for k in range(j+1, len(ternary_ids)):
+                        pair = (ternary_ids[j], ternary_ids[k])
 
-                        if pair in pair_varidx_map:
-                            ternary_factor.append(pair)
+                        if pair in unaryid_varidx_map:
+                            pairs_in_ternary_clique.append(pair)
 
-                if len(ternary_factor) == 3:
-                    var1 = variables[pair_varidx_map[ternary_factor[0]]]
-                    var2 = variables[pair_varidx_map[ternary_factor[1]]]
-                    var3 = variables[pair_varidx_map[ternary_factor[2]]]
+                if len(pairs_in_ternary_clique) == 3:
+                    var1 = variables[unaryid_varidx_map[pairs_in_ternary_clique[0]]]
+                    var2 = variables[unaryid_varidx_map[pairs_in_ternary_clique[1]]]
+                    var3 = variables[unaryid_varidx_map[pairs_in_ternary_clique[2]]]
                     
-                    p = gum.Potential().add(var1).add(var2).add(var3).fillWith(TERNARY_TABLE)
-                    mrf.addFactor(p)
+                    ternary_factor = gum.Potential().add(var1).add(var2).add(var3).fillWith(TERNARY_TABLE)
+                    mrf.addFactor(ternary_factor)
 
-                    all_ternary_indices.add(tuple(ternary_indices))
+                    ternary_cliques.add(tuple(ternary_ids))
 
-    logger.info(f"Number of MRF variables: {len(mrf.names())}")
-    logger.info(f"MRF variables:\n{mrf.names()}")
     logger.info(f"Number of MRF factors: {len(mrf.factors())}")
     logger.info(f"MRF factors:\n{mrf.factors()}")
 
