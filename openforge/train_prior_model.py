@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn import linear_model
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils import extmath
 
@@ -23,7 +23,7 @@ class RidgeClassifierwithProba(linear_model.RidgeClassifier):
         return extmath.softmax(d_2d)
 
 
-def prepare_sotab_data_for_inference(data_filepath: str, random_seed):
+def prepare_sotab_data_for_inference(data_filepath: str):
     if data_filepath.endswith(".pkl"):
         with open(data_filepath, "rb") as f:
             sotab_benchmark = pickle.load(f)
@@ -37,22 +37,7 @@ def prepare_sotab_data_for_inference(data_filepath: str, random_seed):
         X_sotab = []
         y_sotab = []
 
-        pos_sotab_df = sotab_df[sotab_df.relation_variable_label == 1]
-        for row in pos_sotab_df.itertuples():
-            assert row.relation_variable_label == 1
-            X_sotab.append([row.name_similarity, row.value_similarity])
-            y_sotab.append(row.relation_variable_label)
-        
-        # Make a balanced test set as the accuracy will be extremely high for the original imbalanced test set
-        neg_sotab_df = sotab_df[sotab_df.relation_variable_label == 0]
-        sampled_neg_sotab_df = neg_sotab_df.sample(
-            n=len(X_sotab),
-            replace=False,
-            random_state=random_seed
-        )
-
-        for row in sampled_neg_sotab_df.itertuples():
-            assert row.relation_variable_label == 0
+        for row in sotab_df.itertuples():
             X_sotab.append([row.name_similarity, row.value_similarity])
             y_sotab.append(row.relation_variable_label)
         
@@ -61,9 +46,8 @@ def prepare_sotab_data_for_inference(data_filepath: str, random_seed):
     
     print("\nX_sotab shape: ", X_sotab.shape)
     print("y_sotab shape: ", y_sotab.shape)
-    balanced_sotab_df = pd.concat([pos_sotab_df, sampled_neg_sotab_df])
 
-    return X_sotab, y_sotab, balanced_sotab_df
+    return X_sotab, y_sotab, sotab_df
 
 
 if __name__ == "__main__":
@@ -157,26 +141,26 @@ if __name__ == "__main__":
             clf = pickle.load(f)
 
         y_pred = clf.predict(X_test)
-        print(f"\nARTS test accuracy: {accuracy_score(y_test, y_pred):.2f}")
+        print(f"\nARTS F1 score: {f1_score(y_test, y_pred):.2f}")
 
         arts_confdc_scores = clf.predict_proba(X_test)
         print("Confidence scores shape: ", arts_confdc_scores.shape)
         print(arts_confdc_scores[:5])
         print(arts_confdc_scores[:5, 1])
             
-        X_sotab, y_sotab, balanced_sotab_df = prepare_sotab_data_for_inference(args.sotab_benchmark, args.random_seed)
+        X_sotab, y_sotab, sotab_df = prepare_sotab_data_for_inference(args.sotab_benchmark)
 
         y_sotab_pred = clf.predict(X_sotab)
-        print(f"\nSOTAB benchmark accuracy: {accuracy_score(y_sotab, y_sotab_pred):.2f}")
+        print(f"\nSOTAB benchmark F1 score: {f1_score(y_sotab, y_sotab_pred):.2f}")
 
         sotab_confdc_scores = clf.predict_proba(X_sotab)
         print("SOTAB confidence scores shape: ", sotab_confdc_scores.shape)
         print(sotab_confdc_scores[:5])
         print(sotab_confdc_scores[:5, 1])
 
-        balanced_sotab_df["positive_label_confidence_score"] = sotab_confdc_scores[:, 1]
+        sotab_df["positive_label_confidence_score"] = sotab_confdc_scores[:, 1]
         
         output_filepath = os.path.join(
             exp_dir, "sotab_v2_test_mrf_data_with_confidence_scores.csv"
         )
-        balanced_sotab_df.to_csv(output_filepath, index=False)
+        sotab_df.to_csv(output_filepath, index=False)
