@@ -19,14 +19,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mrf_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts_top-20-concepts/arts_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv"
+        default="/home/congtj/openforge/exps/arts_top-10-concepts/arts_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv"
         help="Path to synthesized MRF data."
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/arts_mrf_synthesized_data_top-20-concepts/mrf_inference", # "/home/congtj/openforge/logs/sotab_synthesized_data/mrf_inference"
+        default="/home/congtj/openforge/logs/arts_mrf_synthesized_data_top-10-concepts/mrf_inference", # "/home/congtj/openforge/logs/sotab_synthesized_data/mrf_inference"
         help="Directory to store logs."
     )
 
@@ -141,5 +141,5 @@ if __name__ == "__main__":
         logger.info(f"Posterior for variable {var_name}: ({pred}, {prob:.2f})")
 
     logger.info(f"Number of test instances: {len(mrf_df)}")
-    logger.info(f"Test accuracy: {accuracy_score(y_true, y_pred):2f}")
+    logger.info(f"Test accuracy: {accuracy_score(y_true, y_pred):.2f}")
     logger.info(f"F1 score: {f1_score(y_true, y_pred):.2f}")
