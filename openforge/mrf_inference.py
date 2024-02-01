@@ -6,7 +6,7 @@ import pandas as pd
 import pyAgrum as gum
 
 from openforge.utils.custom_logging import get_custom_logger
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
 
 BINARY_TABLE = [0.5, 0.5, 0.5, 0.5]
@@ -17,16 +17,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--sotab_data",
+        "--mrf_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv",
-        help="Path to the synthesized SOTAB benchmark."
+        default="/home/congtj/openforge/exps/arts_top-20-concepts/arts_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv"
+        help="Path to synthesized MRF data."
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/sotab_synthesized_data/mrf_inference",
+        default="/home/congtj/openforge/logs/arts_mrf_synthesized_data_top-20-concepts/mrf_inference", # "/home/congtj/openforge/logs/sotab_synthesized_data/mrf_inference"
         help="Directory to store logs."
     )
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     logger = get_custom_logger(args.log_dir)
     logger.info(args)
 
-    sotab_df = pd.read_csv(args.sotab_data)
+    mrf_df = pd.read_csv(args.mrf_data)
 
     mrf = gum.MarkovRandomField()
     variables = []
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     unary_table = [] # for comparing priors and posteriors
 
     # Add variables and unary factors
-    for row in sotab_df.itertuples():
+    for row in mrf_df.itertuples():
         var_name = row.relation_variable_name
         unary_id = tuple(
             int(elem) for elem in var_name.split("_")[1].split("-")
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     logger.info(f"Inference time: {end_time - start_time} seconds")
 
     y_true, y_pred = [], []
-    for row in sotab_df.itertuples():
+    for row in mrf_df.itertuples():
         var_name = row.relation_variable_name
         posterior = ss.posterior(var_name)
         pred = posterior.argmax()[0][0][var_name]
@@ -140,5 +140,6 @@ if __name__ == "__main__":
 
         logger.info(f"Posterior for variable {var_name}: ({pred}, {prob:.2f})")
 
-    logger.info(f"Number of test instances: {len(sotab_df)}")
+    logger.info(f"Number of test instances: {len(mrf_df)}")
+    logger.info(f"Test accuracy: {accuracy_score(y_true, y_pred):2f}")
     logger.info(f"F1 score: {f1_score(y_true, y_pred):.2f}")
