@@ -130,6 +130,8 @@ if __name__ == "__main__":
 
     y_true, y_pred = [], []
     for row in mrf_df.itertuples():
+        logger.info("-"*80)
+
         var_name = row.relation_variable_name
         posterior = ss.posterior(var_name)
         pred = posterior.argmax()[0][0][var_name]
@@ -138,8 +140,30 @@ if __name__ == "__main__":
         y_true.append(row.relation_variable_label)
         y_pred.append(pred)
 
+        if row.positive_label_confidence_score >= 0.5:
+            ml_pred = 1
+            logger.info(f"Prior for variable {var_name}: ({ml_pred}, {row.positive_label_confidence_score:.2f})")
+        else:
+            ml_pred = 0
+            logger.info(f"Prior for variable {var_name}: ({ml_pred}, {1 - row.positive_label_confidence_score:.2f})")
+        
         logger.info(f"Posterior for variable {var_name}: ({pred}, {prob:.2f})")
+        logger.info(f"True label for variable {var_name}: {row.relation_variable_label}")
 
+        if ml_pred != row.relation_variable_label:
+            logger.info(f"Prior prediction is incorrect.")
+        if pred != row.relation_variable_label:
+            logger.info(f"Posterior prediction is incorrect.")
+    
+    mrf_df["mrf_prediction"] = y_pred
+    output_filepath = args.mrf_data.split("/")[:-1]
+    output_filepath = os.path.join(
+        "/".join(output_filepath),
+        "arts_test_mrf_data_with_mrf_predictions.csv"
+    )
+    mrf_df.to_csv(output_filepath, index=False)
+
+    logger.info("-"*80)
     logger.info(f"Number of test instances: {len(mrf_df)}")
     logger.info(f"Test accuracy: {accuracy_score(y_true, y_pred):.2f}")
     logger.info(f"F1 score: {f1_score(y_true, y_pred):.2f}")
