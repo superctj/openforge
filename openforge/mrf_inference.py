@@ -19,7 +19,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mrf_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts_top-10-concepts/arts_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv"
+        default="/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-10-concepts/arts_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv"
         help="Path to synthesized MRF data."
     )
 
@@ -45,7 +45,6 @@ if __name__ == "__main__":
 
     unary_cliques = [] # list of unary clique ids (tuple of two integers)
     unaryid_varidx_map = {} # map from unary clique id to corresponding variable index in 'variables'
-    unary_table = [] # for comparing priors and posteriors
 
     # Add variables and unary factors
     for row in mrf_df.itertuples():
@@ -68,14 +67,12 @@ if __name__ == "__main__":
         confdc_score = row.positive_label_confidence_score
         prior = [1 - confdc_score, confdc_score]
 
-        unary_table.append(prior)
         unary_factor = gum.Potential().add(var).fillWith(prior)
         mrf.addFactor(unary_factor)
     
     assert len(mrf.names()) == len(variables)
     assert len(mrf.names()) == len(unary_cliques)
     assert len(mrf.names()) == len(unaryid_varidx_map)
-    assert len(mrf.names()) == len(unary_table)
     logger.info(f"Number of MRF variables / unary factors: {len(mrf.names())}")
     logger.info(f"MRF variables:\n{mrf.names()}")
     logger.info(f"MRF unary factors:\n{mrf.factors()}")
@@ -126,7 +123,7 @@ if __name__ == "__main__":
     start_time = time.time()
     ss.makeInference()
     end_time = time.time()
-    logger.info(f"Inference time: {end_time - start_time} seconds")
+    logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
 
     y_true, y_pred = [], []
     for row in mrf_df.itertuples():
@@ -154,14 +151,6 @@ if __name__ == "__main__":
             logger.info(f"Prior prediction is incorrect.")
         if pred != row.relation_variable_label:
             logger.info(f"Posterior prediction is incorrect.")
-    
-    mrf_df["mrf_prediction"] = y_pred
-    output_filepath = args.mrf_data.split("/")[:-1]
-    output_filepath = os.path.join(
-        "/".join(output_filepath),
-        "arts_test_mrf_data_with_mrf_predictions.csv"
-    )
-    mrf_df.to_csv(output_filepath, index=False)
 
     logger.info("-"*80)
     logger.info(f"Number of test instances: {len(mrf_df)}")

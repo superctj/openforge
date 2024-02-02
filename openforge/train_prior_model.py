@@ -13,7 +13,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils import extmath
 
-from openforge.utils.util import create_dir, get_proj_dir
+from openforge.utils.util import create_dir
 
 
 class RidgeClassifierwithProba(linear_model.RidgeClassifier):
@@ -78,9 +78,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--mode", type=str, default="train", help="Mode: train or test.")
 
-    parser.add_argument("--arts_data", type=str, default="data/arts_mrf_synthesized_data_top-20-concepts/arts_mrf_data.csv", help="Path to the training and test data synthesized from ARTS.")
+    parser.add_argument("--arts_data", type=str, default="/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-10-concepts/arts_mrf_data.csv", help="Path to the training and test data synthesized from ARTS.")
 
-    parser.add_argument("--num_head_concepts", type=int, default=20, help="Number of head concepts considered in arts data.")
+    parser.add_argument("--num_head_concepts", type=int, default=10, help="Number of head concepts considered in arts data.")
 
     parser.add_argument("--arts_train_prop", type=float, default=0.6, help="Training proportion of the ARTS data.")
     
@@ -93,18 +93,10 @@ if __name__ == "__main__":
     # fix random seed
     random.seed(args.random_seed)
 
-    proj_dir = get_proj_dir(__file__, file_level=2)
-    arts_data = os.path.join(proj_dir, args.arts_data)
-
-    exp_dir = os.path.join(
-        proj_dir, f"exps/arts_top-{args.num_head_concepts}-concepts"
-    )
-    if args.mode == "train":
-        create_dir(exp_dir, force=True)
-    
+    exp_dir = "/".join(args.arts_data.split("/")[:-1])
     model_save_filepath = os.path.join(exp_dir, "rc_model.pkl")
 
-    X_train, y_train, X_valid, y_valid, X_test, y_test, test_df = load_arts_data(arts_data, args)
+    X_train, y_train, X_valid, y_valid, X_test, y_test, test_df = load_arts_data(args.arts_data, args)
 
     if args.mode == "train":
         print("\nARTS training data shape: ", X_train.shape)

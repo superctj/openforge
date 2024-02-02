@@ -18,11 +18,11 @@ from openforge.utils.util import create_dir, get_proj_dir
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--arts_output_filepath", type=str, default="/home/congtj/openforge/data/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle", help="Path to the ARTS output file.") # "/home/tianji/openforge/data/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle"
+    parser.add_argument("--arts_data_filepath", type=str, default="/home/congtj/openforge/data/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle", help="Path to the ARTS source data.") # "/home/tianji/openforge/data/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle"
 
     parser.add_argument("--arts_level", type=int, default=2, help="Level of the ARTS ontology to extract concepts.")
 
-    parser.add_argument("--num_head_concepts", type=int, default=20, help="Number of head concepts to consider.")
+    parser.add_argument("--num_head_concepts", type=int, default=10, help="Number of head concepts to consider.")
 
     parser.add_argument("--fasttext_model_dir", type=str, default="/ssd/congtj", help="Directory containing fasttext model weights.")
 
@@ -39,26 +39,29 @@ if __name__ == "__main__":
 
     # create logging directory
     proj_dir = get_proj_dir(__file__, file_level=2)
+    instance_name = f"arts_mrf_synthesized_data_top-{args.num_head_concepts}-concepts"
     
     data_save_dir = os.path.join(
         proj_dir,
-        f"data/arts_mrf_synthesized_data_top-{args.num_head_concepts}-concepts"
+        f"exps/{instance_name}"
     )
     create_dir(data_save_dir, force=True)
 
     log_dir = os.path.join(
         proj_dir,
-        f"logs/arts_mrf_synthesized_data_top-{args.num_head_concepts}-concepts"
+        f"logs/{instance_name}"
     )
     create_dir(log_dir, force=True)
 
     logger = get_custom_logger(log_dir, args.log_level)
     logger.info(args)
 
-    with open(args.arts_output_filepath, "rb") as f:
+    with open(args.arts_data_filepath, "rb") as f:
         data = pickle.load(f)
         nodeByLevel = data["nodeByLevel"]
-        OntologyNode.init__device_and_threshold(device=data["device"], threshold=data["threshold"])
+        OntologyNode.init__device_and_threshold(
+            device=data["device"], threshold=data["threshold"]
+        )
         OntologyNode.embeddingByLevelAndIdx = data["embeddings"]
 
     nodeByLevel[args.arts_level].sort(key=lambda x:len(x.tbl_column_matched), reverse=True)
