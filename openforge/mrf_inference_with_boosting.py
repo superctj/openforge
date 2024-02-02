@@ -130,6 +130,8 @@ if __name__ == "__main__":
     logger.info(f"MRF factors:\n{mrf.factors()}")
 
     ss = gum.ShaferShenoyMRFInference(mrf)
+
+    num_boost_preds = 0
     for row in mrf_boost_df.itertuples():
         var_name = row.relation_variable_name
         unary_id = tuple(
@@ -138,6 +140,9 @@ if __name__ == "__main__":
         if unary_id in unary_cliques:
             boost_pred = row.mrf_prediction
             ss.addEvidence(var_name, boost_pred)
+            num_boost_preds += 1
+    
+    logger.info(f"Number of boosting predictions: {num_boost_preds}")
 
     start_time = time.time()
     ss.makeInference()
