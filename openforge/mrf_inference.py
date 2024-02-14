@@ -9,7 +9,7 @@ from openforge.utils.custom_logging import get_custom_logger
 from sklearn.metrics import accuracy_score, f1_score
 
 
-BINARY_TABLE = [0.5, 0.5, 0.5, 0.5]
+# BINARY_TABLE = [0.5, 0.5, 0.5, 0.5]
 TERNARY_TABLE = [1, 1, 1, 0, 1, 0, 0, 1]
 
 
@@ -19,14 +19,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mrf_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-10-concepts/arts_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv"
+        default="/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-30-concepts/arts_test_mrf_data_with_confidence_scores.csv"
         help="Path to synthesized MRF data."
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/arts_mrf_synthesized_data_top-10-concepts/mrf_inference", # "/home/congtj/openforge/logs/sotab_synthesized_data/mrf_inference"
+        default="/home/congtj/openforge/logs/sotab_mrf_synthesized_data/mrf_inference", # "/home/congtj/openforge/logs/arts_mrf_synthesized_data_top-30-concepts/mrf_inference"
         help="Directory to store logs."
     )
 
@@ -85,11 +85,11 @@ if __name__ == "__main__":
             intersect = set(unary_id1).intersection(set(unary_id2))
             
             if len(intersect) == 1: # variables involving a common concept
-                var1 = variables[unaryid_varidx_map[unary_id1]]
-                var2 = variables[unaryid_varidx_map[unary_id2]]
+                # var1 = variables[unaryid_varidx_map[unary_id1]]
+                # var2 = variables[unaryid_varidx_map[unary_id2]]
                 
-                binary_factor = gum.Potential().add(var1).add(var2).fillWith(BINARY_TABLE)
-                mrf.addFactor(binary_factor)
+                # binary_factor = gum.Potential().add(var1).add(var2).fillWith(BINARY_TABLE)
+                # mrf.addFactor(binary_factor)
 
                 ternary_ids = list(set(unary_id1).union(set(unary_id2)))
                 ternary_ids.sort()
@@ -119,6 +119,15 @@ if __name__ == "__main__":
     logger.info(f"MRF factors:\n{mrf.factors()}")
 
     ss = gum.ShaferShenoyMRFInference(mrf)
+
+    for row in mrf_df.itertuples():
+        var_name = row.relation_variable_name
+        pos_confdc_score = row.positive_label_confidence_score
+
+        if pos_confdc_score >= 0.85:
+            ss.addEvidence(var_name, 1)
+        elif pos_confdc_score <= 0.15:
+            ss.addEvidence(var_name, 0)
 
     start_time = time.time()
     ss.makeInference()
