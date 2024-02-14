@@ -1,6 +1,6 @@
 from collections import defaultdict
-from sentence_transformers import SentenceTransformer, util
-import torch
+# from sentence_transformers import SentenceTransformer, util
+# import torch
 from tqdm import tqdm
 import pickle
 
@@ -11,7 +11,7 @@ from openforge.ARTS.helpers.mongodb_helper import *
 class OntologyNode(object):
     embeddingByLevelAndIdx = {}
     # textsSetByLevel = defaultdict(set)
-    embedder = SentenceTransformer("all-MiniLM-L6-v2")
+    # embedder = SentenceTransformer("all-MiniLM-L6-v2")
     DEVICE = None
     THRESHOLD = None
 
@@ -95,13 +95,13 @@ class OntologyNode(object):
         # self.embeddings = encoder.encode(self.texts, device=OntologyNode.DEVICE, convert_to_tensor=True) # type: ignore
         # self.embedding = torch.mean(self.embeddings, dim=0) # type: ignore
 
-    def compute_embedding(self):
-        if len(self.texts) >= 1:
-            return torch.mean(
-                OntologyNode.embedder.encode(self.texts, device=OntologyNode.DEVICE, convert_to_tensor=True),
-                dim=0)  # type: ignore
-        else:
-            raise NotImplementedError
+    # def compute_embedding(self):
+    #     if len(self.texts) >= 1:
+    #         return torch.mean(
+    #             OntologyNode.embedder.encode(self.texts, device=OntologyNode.DEVICE, convert_to_tensor=True),
+    #             dim=0)  # type: ignore
+    #     else:
+    #         raise NotImplementedError
 
     def get_embedding(self):
         return OntologyNode.embeddingByLevelAndIdx[self.level][self.idx]
@@ -110,40 +110,40 @@ class OntologyNode(object):
         assert self.level + 1 == child.level
         self.children.append(child)
 
-    @staticmethod
-    def most_similiar_by_level(text: str, level: int):
-        query_embedding = OntologyNode.embedder.encode(
-            text, convert_to_tensor=True, device=OntologyNode.DEVICE
-        )
-        corpus_embeddings = OntologyNode.embeddingByLevelAndIdx[level]
+    # @staticmethod
+    # def most_similiar_by_level(text: str, level: int):
+    #     query_embedding = OntologyNode.embedder.encode(
+    #         text, convert_to_tensor=True, device=OntologyNode.DEVICE
+    #     )
+    #     corpus_embeddings = OntologyNode.embeddingByLevelAndIdx[level]
 
-        # an empty level
-        if corpus_embeddings.shape[0] == 0:
-            return 0, -1
+    #     # an empty level
+    #     if corpus_embeddings.shape[0] == 0:
+    #         return 0, -1
 
-        cos_scores = util.cos_sim(query_embedding, corpus_embeddings)[0]  # type: ignore
-        most_relevant = torch.topk(cos_scores, k=1)
+    #     cos_scores = util.cos_sim(query_embedding, corpus_embeddings)[0]  # type: ignore
+    #     most_relevant = torch.topk(cos_scores, k=1)
 
-        score, idx = most_relevant[0][0], most_relevant[1][0]
-        return score, idx
+    #     score, idx = most_relevant[0][0], most_relevant[1][0]
+    #     return score, idx
 
-    def most_similar_with_children(self, text: str):
-        if not self.children:
-            return -1
+    # def most_similar_with_children(self, text: str):
+    #     if not self.children:
+    #         return -1
 
-        query_embedding = OntologyNode.embedder.encode(
-            text, convert_to_tensor=True, device=OntologyNode.DEVICE
-        )
-        corpus_embeddings = OntologyNode.embeddingByLevelAndIdx[self.level + 1][
-            [x.idx for x in self.children]
-        ]
+    #     query_embedding = OntologyNode.embedder.encode(
+    #         text, convert_to_tensor=True, device=OntologyNode.DEVICE
+    #     )
+    #     corpus_embeddings = OntologyNode.embeddingByLevelAndIdx[self.level + 1][
+    #         [x.idx for x in self.children]
+    #     ]
 
-        cos_scores = util.cos_sim(query_embedding, corpus_embeddings)[0]  # type: ignore
-        most_relevant = torch.topk(cos_scores, k=1)
-        score, idx = most_relevant[0][0], most_relevant[1][0]
-        if score > OntologyNode.THRESHOLD:
-            return self.children[idx].idx
-        return -1
+    #     cos_scores = util.cos_sim(query_embedding, corpus_embeddings)[0]  # type: ignore
+    #     most_relevant = torch.topk(cos_scores, k=1)
+    #     score, idx = most_relevant[0][0], most_relevant[1][0]
+    #     if score > OntologyNode.THRESHOLD:
+    #         return self.children[idx].idx
+    #     return -1
 
 
 def builf_ontology_with_decomposed_column_semantics(
