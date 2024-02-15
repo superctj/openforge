@@ -17,17 +17,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--mrf_data",
+        "--prior_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts_top-100-concepts/sotab_v2_test_mrf_data_with_confidence_scores.csv", # "/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-30-concepts/arts_test_mrf_data_with_confidence_scores.csv"
-        help="Path to synthesized MRF data."
+        default="/home/congtj/openforge/exps/arts-context_top-20-nodes/arts_mrf_data_test_with_ml_prior.csv", # "/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-30-concepts/arts_test_mrf_data_with_confidence_scores.csv"
+        help="Path to prior data."
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/sotab_mrf_synthesized_data/mrf_inference", # "/home/congtj/openforge/logs/arts_mrf_synthesized_data_top-30-concepts/mrf_inference"
-        help="Directory to store logs."
+        default="/home/congtj/openforge/logs/arts-context_top-20-nodes", # "/home/congtj/openforge/logs/sotab_mrf_synthesized_data/mrf_inference", # "/home/congtj/openforge/logs/arts_mrf_synthesized_data_top-30-concepts/mrf_inference"
+        help="Directory to save logs."
+    )
+
+    parser.add_argument(
+        "--boost",
+        type=bool,
+        default=True,
+        help="Whether to use confident prior predictions as hard evidence."
     )
 
     args = parser.parse_args()
@@ -38,7 +45,7 @@ if __name__ == "__main__":
     logger = get_custom_logger(args.log_dir)
     logger.info(args)
 
-    mrf_df = pd.read_csv(args.mrf_data)
+    prior_df = pd.read_csv(args.prior_data)
 
     mrf = gum.MarkovRandomField()
     variables = []
@@ -47,7 +54,7 @@ if __name__ == "__main__":
     unaryid_varidx_map = {} # map from unary clique id to corresponding variable index in 'variables'
 
     # Add variables and unary factors
-    for row in mrf_df.itertuples():
+    for row in prior_df.itertuples():
         var_name = row.relation_variable_name
         unary_id = tuple(
             int(elem) for elem in var_name.split("_")[1].split("-")
@@ -120,14 +127,15 @@ if __name__ == "__main__":
 
     ss = gum.ShaferShenoyMRFInference(mrf)
 
-    for row in mrf_df.itertuples():
-        var_name = row.relation_variable_name
-        pos_confdc_score = row.positive_label_confidence_score
+    if args.boost:
+        for row in prior_df.itertuples():
+            var_name = row.relation_variable_name
+            pos_confdc_score = row.positive_label_confidence_score
 
-        if pos_confdc_score >= 0.85:
-            ss.addEvidence(var_name, 1)
-        elif pos_confdc_score <= 0.15:
-            ss.addEvidence(var_name, 0)
+            if pos_confdc_score >= 0.85:
+                ss.addEvidence(var_name, 1)
+            elif pos_confdc_score <= 0.15:
+                ss.addEvidence(var_name, 0)
 
     start_time = time.time()
     ss.makeInference()
@@ -135,7 +143,7 @@ if __name__ == "__main__":
     logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
 
     y_true, y_pred = [], []
-    for row in mrf_df.itertuples():
+    for row in prior_df.itertuples():
         logger.info("-"*80)
 
         var_name = row.relation_variable_name
@@ -162,6 +170,6 @@ if __name__ == "__main__":
             logger.info(f"Posterior prediction is incorrect.")
 
     logger.info("-"*80)
-    logger.info(f"Number of test instances: {len(mrf_df)}")
+    logger.info(f"Number of test instances: {len(prior_df)}")
     logger.info(f"Test accuracy: {accuracy_score(y_true, y_pred):.2f}")
     logger.info(f"F1 score: {f1_score(y_true, y_pred):.2f}")
