@@ -56,6 +56,17 @@ def load_arts_data(data_filepath: str, args: argparse.Namespace):
     return X_train, y_train, X_valid, y_valid, X_test, y_test, X_test_df
 
 
+def load_arts_context(data_filepath: str):
+    arts_df = pd.read_csv(data_filepath, delimiter=",", header=0)
+
+    X = arts_df[["name_similarity", "value_similarity"]].to_numpy()
+    y = arts_df["relation_variable_label"].to_numpy()
+    print(f"\tFeature shape: {X.shape}")
+    assert X.shape[0] == y.shape[0]
+
+    return X, y, arts_df
+
+
 def load_sotab_data(data_filepath: str):
     sotab_df = pd.read_csv(data_filepath, delimiter=",", header=0)
     X_sotab, y_sotab = [], []
@@ -78,9 +89,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--mode", type=str, default="train", help="Mode: train or test.")
 
-    parser.add_argument("--arts_data", type=str, default="/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-10-concepts/arts_mrf_data.csv", help="Path to the training and test data synthesized from ARTS.")
-
-    parser.add_argument("--num_head_concepts", type=int, default=10, help="Number of head concepts considered in arts data.")
+    parser.add_argument("--arts_data", type=str, default="/home/congtj/openforge/exps/arts-context_top-20-nodes", help="Path to the training and test data synthesized from ARTS.") # "/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-30-concepts/arts_mrf_data.csv"
 
     parser.add_argument("--arts_train_prop", type=float, default=0.6, help="Training proportion of the ARTS data.")
     
@@ -93,10 +102,26 @@ if __name__ == "__main__":
     # fix random seed
     random.seed(args.random_seed)
 
-    exp_dir = "/".join(args.arts_data.split("/")[:-1])
-    model_save_filepath = os.path.join(exp_dir, "rc_model.pkl")
+    if os.path.isdir(args.arts_data):
+        exp_dir = args.arts_data
 
-    X_train, y_train, X_valid, y_valid, X_test, y_test, test_df = load_arts_data(args.arts_data, args)
+        train_filepath = os.path.join(exp_dir, "arts_mrf_data_train.csv")
+        print("Loading training split...")
+        X_train, y_train, _ = load_arts_context(train_filepath)
+
+        valid_filepath = os.path.join(exp_dir, "arts_mrf_data_valid.csv")
+        print("Loading validation split...")
+        X_valid, y_valid, _ = load_arts_context(valid_filepath)
+
+        test_filepath = os.path.join(exp_dir, "arts_mrf_data_test.csv")
+        print("Loading test split...")
+        X_test, y_test, test_df = load_arts_context(test_filepath)
+    else:
+        exp_dir = "/".join(args.arts_data.split("/")[:-1])
+        
+        X_train, y_train, X_valid, y_valid, X_test, y_test, test_df = load_arts_data(args.arts_data, args)
+    
+    model_save_filepath = os.path.join(exp_dir, "rc_model.pkl")
 
     if args.mode == "train":
         print("\nARTS training data shape: ", X_train.shape)
@@ -121,17 +146,17 @@ if __name__ == "__main__":
         print(f"ARTS test accuracy: {accuracy_score(y_test, y_test_pred):.2f}")
         print(f"ARTS test F1 score: {f1_score(y_test, y_test_pred):.2f}")
 
-        test_confdc_scores = clf.predict_proba(X_test)
-        print(test_confdc_scores.shape)
-        print(test_confdc_scores[:5])
-
+        # Save model
         with open(model_save_filepath, "wb") as f:
             pickle.dump(clf, f)
 
+        test_confdc_scores = clf.predict_proba(X_test)
+        # print(test_confdc_scores.shape)
+        # print(test_confdc_scores[:5])
         test_df["positive_label_confidence_score"] = test_confdc_scores[:, 1]
         
         output_filepath = os.path.join(
-            exp_dir, "arts_test_mrf_data_with_confidence_scores.csv"
+            exp_dir, "arts_mrf_data_test_with_ml_prior.csv"
         )
         test_df.to_csv(output_filepath, index=False)
     else:
