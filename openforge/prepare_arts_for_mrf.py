@@ -22,11 +22,11 @@ if __name__ == "__main__":
 
     parser.add_argument("--arts_level", type=int, default=2, help="Level of the ARTS ontology to extract concepts.")
 
-    parser.add_argument("--num_head_concepts", type=int, default=10, help="Number of head concepts to consider.")
+    parser.add_argument("--num_head_nodes", type=int, default=30, help="Number of head nodes to consider.")
 
     parser.add_argument("--fasttext_model_dir", type=str, default="/ssd/congtj", help="Directory containing fasttext model weights.")
 
-    parser.add_argument("--num_val_samples", type=int, default=10000, help="Number of maximum sample values per column for computing features.")
+    parser.add_argument("--num_val_samples", type=int, default=10000, help="Maximum number of sample values per column for computing features.")
 
     parser.add_argument("--log_level", type=str, default="INFO", help="Logging level.")
 
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     # create logging directory
     proj_dir = get_proj_dir(__file__, file_level=2)
-    instance_name = f"arts_mrf_synthesized_data_top-{args.num_head_concepts}-concepts"
+    instance_name = f"arts_mrf_synthesized_data_top-{args.num_head_nodes}-concepts"
     
     data_save_dir = os.path.join(
         proj_dir,
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     mrf_data = []
     global_concept_id = 1 # start from 1
 
-    for i, node_i in enumerate(nodeByLevel[args.arts_level][:args.num_head_concepts]):
+    for i, node_i in enumerate(nodeByLevel[args.arts_level][:args.num_head_nodes]):
         # 'node_i' is the head concept
         assert str(node_i) == node_i.texts[0]
         # Each merged concept has at least one corresponding table column
@@ -158,7 +158,7 @@ if __name__ == "__main__":
             unmerged_concept_id = local_concept_id
 
             # Compute evidence between the reference concept and subsequent unmerged concepts (negative instances)
-            for subsequent_node in nodeByLevel[args.arts_level][i+1:args.num_head_concepts]:
+            for subsequent_node in nodeByLevel[args.arts_level][i+1:args.num_head_nodes]:
                 for unmerged_concept in subsequent_node.texts:
                     logger.info(f"Concept pair (with global concept id {reference_concept_id} and {unmerged_concept_id}): {reference_concept} and {unmerged_concept}")
 
