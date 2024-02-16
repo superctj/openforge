@@ -24,6 +24,7 @@ MRFEntry = make_dataclass("MRFEntry", [
         ("relation_variable_label", int)
     ])
 
+
 def create_pos_and_neg_instances(arts_nodes: list, qgram_transformer, fasttext_transformer, logger, args):
     global_concept_id = 1 # start from 1
     mrf_data = []
@@ -164,7 +165,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--arts_level", type=int, default=2, help="Level of the ARTS ontology to extract concepts.")
 
-    parser.add_argument("--num_head_nodes", type=int, default=20, help="Number of head nodes to consider.")
+    parser.add_argument("--num_head_nodes", type=int, default=30, help="Number of head nodes to consider.")
 
     parser.add_argument("--train_prop", type=float, default=0.6, help="Training proportion of the ARTS data.")
 
@@ -218,23 +219,49 @@ if __name__ == "__main__":
     mrf_data = {"train": [], "valid": [], "test": []}
 
     # Split by ARTS nodes
-    all_indices = list(range(args.num_head_nodes))
-
+    base_num_nodes = 20
+    assert args.num_head_nodes >= base_num_nodes
+    
+    base_indices = list(range(base_num_nodes))
     train_indices = random.sample(
-        population=all_indices,
-        k=int(args.train_prop * args.num_head_nodes)
+        population=base_indices,
+        k=int(args.train_prop * base_num_nodes)
     )
-    logger.info(f"Train indices: {train_indices}")
 
-    valid_test_indices = list(set(all_indices) - set(train_indices))
+    valid_test_indices = list(set(base_indices) - set(train_indices))
     valid_indices = random.sample(
         population=valid_test_indices,
         k=len(valid_test_indices) // 2
     )
-    logger.info(f"Valid indices: {valid_indices}")
 
     test_indices = list(set(valid_test_indices) - set(valid_indices))
-    logger.info(f"Test indices: {test_indices}")
+
+    if args.num_head_nodes > base_num_nodes:
+        extra_indices = list(range(base_num_nodes, args.num_head_nodes))
+
+        extra_train_indices = random.sample(
+            population=extra_indices,
+            k=int(args.train_prop * len(extra_indices))
+        )
+        train_indices.extend(extra_train_indices)
+        logger.info(f"Train indices: {train_indices}")
+
+        extra_valid_test_indices = list(
+            set(extra_indices) - set(extra_train_indices)
+        )
+        
+        extra_valid_indices = random.sample(
+            population=extra_valid_test_indices,
+            k=len(extra_valid_test_indices) // 2
+        )
+        valid_indices.extend(extra_valid_indices)
+        logger.info(f"Valid indices: {valid_indices}")
+
+        extra_test_indices = list(
+            set(extra_valid_test_indices) - set(extra_valid_indices)
+        )
+        test_indices.extend(extra_test_indices)
+        logger.info(f"Test indices: {test_indices}")
 
     train_nodes = [nodeByLevel[args.arts_level][i] for i in train_indices]
     valid_nodes = [nodeByLevel[args.arts_level][i] for i in valid_indices]
