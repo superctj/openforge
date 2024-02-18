@@ -9,13 +9,12 @@ import pandas as pd
 from pgmpy.factors.discrete import DiscreteFactor
 from pgmpy.inference import Mplp
 from pgmpy.models import MarkovNetwork
-from pgmpy.sampling import GibbsSampling
 
 from openforge.utils.custom_logging import get_custom_logger
 from sklearn.metrics import accuracy_score, f1_score
 
 
-TERNARY_TABLE = [1, 1, 1, 0, 1, 0, 0, 1]
+TERNARY_TABLE = [1, 1, 1, 0, 1, 0, 0, 1] # [1, 1.2, 1.2, 0, 1, 0, 0, 0.8]
 
 
 def convert_var_name_to_var_id(var_name):
@@ -32,14 +31,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prior_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts-context_top-20-nodes/arts_mrf_data_test_with_ml_prior.csv", # "/home/congtj/openforge/exps/arts_mrf_synthesized_data_top-30-concepts/arts_test_mrf_data_with_confidence_scores.csv"
+        default="/home/congtj/openforge/exps/arts-context_top-20-nodes/sotab_v2_test_mrf_data_with_confidence_scores.csv",
         help="Path to prior data."
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/arts-context_top-20-nodes/pgmpy",
+        default="/home/congtj/openforge/logs/sotab_mrf_synthesized_data/pgmpy_mplp",
         help="Directory to save logs."
     )
 
@@ -52,17 +51,12 @@ if __name__ == "__main__":
     logger.info(args)
 
     prior_df = pd.read_csv(args.prior_data)
-
     mrf = MarkovNetwork()
-    unary_cliques = [] # list of unary clique ids (tuple of two integers)
 
     # add variables and unary factors
     for row in prior_df.itertuples():
         var_name = row.relation_variable_name
         mrf.add_node(var_name)
-
-        unary_id = convert_var_name_to_var_id(var_name)
-        unary_cliques.append(unary_id)
 
         confdc_score = row.positive_label_confidence_score
         prior = [1 - confdc_score, confdc_score]
@@ -81,69 +75,29 @@ if __name__ == "__main__":
     assert num_nodes == num_unary_factors
     assert mrf.check_model()
 
-    # # Add edges and ternary factors
-    # ternary_cliques = set()
+    start = time.time()
+    ternary_combos = combinations(range(1, args.num_concepts+1), 3)
+    end = time.time()
+    logger.info(f"Time taken to generate ternary combos: {end-start:.2f} seconds")
 
-    # for edge in combinations(mrf.nodes(), 2):
-    #     mrf.add_edge(*edge)
+    start = time.time()
+    for combo in ternary_combos:
+        var1 = f"R_{combo[0]}-{combo[1]}"
+        var2 = f"R_{combo[0]}-{combo[2]}"
+        var3 = f"R_{combo[1]}-{combo[2]}"
 
-    #     var1_id = convert_var_name_to_var_id(edge[0])
-    #     var2_id = convert_var_name_to_var_id(edge[1])
+        mrf.add_edges_from([(var1, var2), (var1, var3), (var2, var3)])
+        ternary_factor = DiscreteFactor(
+            [var1, var2, var3],
+            cardinality=[2, 2, 2],
+            values=TERNARY_TABLE
+        )
+        ternary_factor.normalize()
 
-    #     intersect = set(var1_id).intersection(set(var2_id))
-    #     if len(intersect) == 1:
-    #         ternary_id = list(set(var1_id).union(set(var2_id)))
-    #         ternary_id.sort()
-
-    #         if tuple(ternary_id) in ternary_cliques:
-    #             continue
-
-    #         ternary_cliques.add(tuple(ternary_id))
-    #         var1 = f"R_{ternary_id[0]}-{ternary_id[1]}"
-    #         var2 = f"R_{ternary_id[0]}-{ternary_id[2]}"
-    #         var3 = f"R_{ternary_id[1]}-{ternary_id[2]}"
-
-    #         ternary_factor = DiscreteFactor(
-    #             [var1, var2, var3],
-    #             cardinality=[2, 2, 2],
-    #             values=TERNARY_TABLE
-    #         )
-    #         ternary_factor.normalize()
-
-    #         mrf.add_factors(ternary_factor)
+        mrf.add_factors(ternary_factor)
     
-    # Add ternary factors
-    ternary_cliques = set() # set of ternary clique ids (sorted tuples)
-
-    for i, unary_id1 in enumerate(unary_cliques):
-        # logger.info(f"{i}-th unary clique: {unary_id1}")
-        for unary_id2 in unary_cliques[i+1:]:
-            intersect = set(unary_id1).intersection(set(unary_id2))
-            
-            if len(intersect) == 1:
-                ternary_id = list(set(unary_id1).union(set(unary_id2)))
-                ternary_id.sort()
-
-                if tuple(ternary_id) in ternary_cliques:
-                    continue
-            
-                logger.info(f"Ternary id: {ternary_id}")
-                ternary_cliques.add(tuple(ternary_id))
-
-                var1 = f"R_{ternary_id[0]}-{ternary_id[1]}"
-                var2 = f"R_{ternary_id[0]}-{ternary_id[2]}"
-                var3 = f"R_{ternary_id[1]}-{ternary_id[2]}"
-
-                mrf.add_edges_from([(var1, var2), (var1, var3), (var2, var3)])
-                ternary_factor = DiscreteFactor(
-                    [var1, var2, var3],
-                    cardinality=[2, 2, 2],
-                    values=TERNARY_TABLE
-                )
-                ternary_factor.normalize()
-
-                mrf.add_factors(ternary_factor)
-                assert mrf.check_model()
+    end = time.time()
+    logger.info(f"Time taken to add ternary factors: {end-start:.2f} seconds")
     
     logger.info(f"Number of MRF edges: {len(mrf.edges())}")
     logger.info(f"MRF edges:\n{mrf.edges()}")
@@ -154,13 +108,11 @@ if __name__ == "__main__":
 
     # Inference
     mplp = Mplp(mrf)
-    logger.info(f"mplp objective: {mplp.objective}")
 
     start_time = time.time()
     results = mplp.map_query(tighten_triplet=False)
     end_time = time.time()
     logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
-    logger.info(f"Results:\n{results}")
 
     y_true, y_pred = [], []
     for row in prior_df.itertuples():
