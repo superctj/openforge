@@ -4,7 +4,6 @@ openapi_key
 *.pkl
 venv/
 __pycache__
-examples/
 logs/
 **/output
 plots/
