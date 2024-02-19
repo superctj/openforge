@@ -14,13 +14,11 @@ from openforge.utils.custom_logging import get_custom_logger
 from sklearn.metrics import accuracy_score, f1_score
 
 
-TERNARY_TABLE = [1, 1, 1, 0, 1, 0, 0, 1] # [1, 1.2, 1.2, 0, 1, 0, 0, 0.8]
+TERNARY_TABLE = [1.2, 1.2, 1.2, 0, 1.2, 0, 0, 1]
 
 
 def convert_var_name_to_var_id(var_name):
-    var_id = tuple(
-        int(elem) for elem in var_name.split("_")[1].split("-")
-    )
+    var_id = tuple(int(elem) for elem in var_name.split("_")[1].split("-"))
 
     return var_id
 
@@ -31,15 +29,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prior_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts-context_top-20-nodes/sotab_v2_test_mrf_data_with_confidence_scores.csv",
-        help="Path to prior data."
+        default="/home/congtj/openforge/exps/arts-context_top-40-nodes/\
+arts_mrf_data_valid_with_ml_prior.csv",
+        help="Path to prior data.",
+    )
+
+    parser.add_argument(
+        "--num_concepts",
+        type=int,
+        default=21,
+        help="Number of concepts in the vocabulary to be cleaned.",
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/sotab_mrf_synthesized_data/pgmpy_mplp",
-        help="Directory to save logs."
+        default="/home/congtj/openforge/logs/arts-context_top-40-nodes/\
+pgmpy_mplp",
+        help="Directory to save logs.",
     )
 
     args = parser.parse_args()
@@ -60,11 +67,7 @@ if __name__ == "__main__":
 
         confdc_score = row.positive_label_confidence_score
         prior = [1 - confdc_score, confdc_score]
-        unary_factor = DiscreteFactor(
-            [var_name],
-            cardinality=[2],
-            values=prior
-        )
+        unary_factor = DiscreteFactor([var_name], cardinality=[2], values=prior)
 
         mrf.add_factors(unary_factor)
 
@@ -76,9 +79,11 @@ if __name__ == "__main__":
     assert mrf.check_model()
 
     start = time.time()
-    ternary_combos = combinations(range(1, args.num_concepts+1), 3)
+    ternary_combos = combinations(range(1, args.num_concepts + 1), 3)
     end = time.time()
-    logger.info(f"Time taken to generate ternary combos: {end-start:.2f} seconds")
+    logger.info(
+        f"Time taken to generate ternary combos: {end-start:.2f} seconds"
+    )
 
     start = time.time()
     for combo in ternary_combos:
@@ -88,17 +93,15 @@ if __name__ == "__main__":
 
         mrf.add_edges_from([(var1, var2), (var1, var3), (var2, var3)])
         ternary_factor = DiscreteFactor(
-            [var1, var2, var3],
-            cardinality=[2, 2, 2],
-            values=TERNARY_TABLE
+            [var1, var2, var3], cardinality=[2, 2, 2], values=TERNARY_TABLE
         )
         ternary_factor.normalize()
 
         mrf.add_factors(ternary_factor)
-    
+
     end = time.time()
     logger.info(f"Time taken to add ternary factors: {end-start:.2f} seconds")
-    
+
     logger.info(f"Number of MRF edges: {len(mrf.edges())}")
     logger.info(f"MRF edges:\n{mrf.edges()}")
 
@@ -116,7 +119,7 @@ if __name__ == "__main__":
 
     y_true, y_pred = [], []
     for row in prior_df.itertuples():
-        logger.info("-"*80)
+        logger.info("-" * 80)
 
         var_name = row.relation_variable_name
         pred = results[var_name]
@@ -126,20 +129,29 @@ if __name__ == "__main__":
 
         if row.positive_label_confidence_score >= 0.5:
             ml_pred = 1
-            logger.info(f"Prior for variable {var_name}: ({ml_pred}, {row.positive_label_confidence_score:.2f})")
+            log_msg = (
+                f"Prior for variable {var_name}: ({ml_pred}, "
+                f"{row.positive_label_confidence_score:.2f})"
+            )
         else:
             ml_pred = 0
-            logger.info(f"Prior for variable {var_name}: ({ml_pred}, {1 - row.positive_label_confidence_score:.2f})")
-        
+            log_msg = (
+                f"Prior for variable {var_name}: ({ml_pred}, "
+                f"{1 - row.positive_label_confidence_score:.2f})"
+            )
+
+        logger.info(log_msg)
         logger.info(f"Posterior for variable {var_name}: {pred}")
-        logger.info(f"True label for variable {var_name}: {row.relation_variable_label}")
+        logger.info(
+            f"True label for variable {var_name}: {row.relation_variable_label}"
+        )
 
         if ml_pred != row.relation_variable_label:
-            logger.info(f"Prior prediction is incorrect.")
+            logger.info("Prior prediction is incorrect.")
         if pred != row.relation_variable_label:
-            logger.info(f"Posterior prediction is incorrect.")
+            logger.info("Posterior prediction is incorrect.")
 
-    logger.info("-"*80)
+    logger.info("-" * 80)
     logger.info(f"Number of test instances: {len(prior_df)}")
     logger.info(f"Test accuracy: {accuracy_score(y_true, y_pred):.2f}")
     logger.info(f"F1 score: {f1_score(y_true, y_pred):.2f}")

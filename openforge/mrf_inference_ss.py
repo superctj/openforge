@@ -177,15 +177,14 @@ pyagrum_ss",
                 f"Prior for variable {var_name}: ({ml_pred}, "
                 f"{row.positive_label_confidence_score:.2f})"
             )
-            logger.info(log_msg)
         else:
             ml_pred = 0
             log_msg = (
                 f"Prior for variable {var_name}: ({ml_pred}, "
                 f"{1 - row.positive_label_confidence_score:.2f})"
             )
-            logger.info(log_msg)
 
+        logger.info(log_msg)
         logger.info(f"Posterior for variable {var_name}: ({pred}, {prob:.2f})")
         logger.info(
             f"True label for variable {var_name}: {row.relation_variable_label}"
