@@ -22,7 +22,17 @@ class MRFWrapper:
         self.num_concepts = num_concepts
         self.logger = logger
 
-    def create_mrf(self, ternary_table):
+    def create_mrf(self, mrf_hp_config: dict) -> MarkovNetwork:
+        ternary_table = [
+            mrf_hp_config["ternary_alpha"],  # 0, 0, 0
+            mrf_hp_config["ternary_beta"],  # 0, 0, 1
+            mrf_hp_config["ternary_beta"],  # 0, 1, 0
+            0,  # 0, 1, 1
+            mrf_hp_config["ternary_beta"],  # 1, 0, 0
+            0,  # 1, 0, 1
+            0,  # 1, 1, 0
+            mrf_hp_config["ternary_gamma"],  # 1, 1, 1
+        ]
         mrf = MarkovNetwork()
 
         # add variables and unary factors
@@ -134,7 +144,9 @@ class MRFWrapper:
         )
         self.logger.info(f"Prior F1 score: {f1_score(y_true, y_prior):.2f}")
 
-        self.logger.info(
-            f"MRF test accuracy: {accuracy_score(y_true, y_pred):.2f}"
-        )
-        self.logger.info(f"MRF F1 score: {f1_score(y_true, y_pred):.2f}")
+        mrf_accuracy = accuracy_score(y_true, y_pred)
+        mrf_f1_score = f1_score(y_true, y_pred)
+        self.logger.info(f"MRF test accuracy: {mrf_accuracy:.2f}")
+        self.logger.info(f"MRF F1 score: {mrf_f1_score:.2f}")
+
+        return mrf_f1_score, mrf_accuracy
