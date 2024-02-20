@@ -22,7 +22,7 @@ class TuningEngine:
         """
 
         mrf = self.mrf_wrapper.create_mrf(dict(mrf_hp_config))
-        results = self.mrf_wrapper.run_mplp(mrf)
+        results = self.mrf_wrapper.run_mplp_inference(mrf)
         f1_score, accuracy = self.mrf_wrapper.evaluate_results(results)
 
         if self.exp_state.best_f1_score < f1_score:
