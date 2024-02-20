@@ -50,5 +50,5 @@ if __name__ == "__main__":
     )
 
     # Hyperparameter tuning
-    tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
+    tuning_engine = TuningEngine(config, mrf_wrapper, hp_space, logger)
     tuning_engine.run()
