@@ -1,4 +1,5 @@
 from configparser import ConfigParser
+from functools import partial
 
 from ConfigSpace import ConfigurationSpace
 from smac import BlackBoxFacade as BBFacade
@@ -15,6 +16,11 @@ def get_bo_optimizer(
         deterministic=True,
         objectives="cost",  # minimize the objective
         n_trials=exp_config.getint("hp_optimization", "n_trials"),
+        seed=exp_config.getint("hp_optimization", "random_seed"),
+    )
+
+    target_function = partial(
+        target_function,
         seed=exp_config.getint("hp_optimization", "random_seed"),
     )
 

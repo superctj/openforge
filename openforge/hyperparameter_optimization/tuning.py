@@ -16,7 +16,7 @@ class TuningEngine:
         self.exp_state = ExperimentState()
         self.logger = logger
 
-    def bo_target_function(self, mrf_hp_config: ConfigurationSpace):
+    def bo_target_function(self, mrf_hp_config: ConfigurationSpace, seed: int):
         """
         Target function for Bayesian Optimization.
         """
