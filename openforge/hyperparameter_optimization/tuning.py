@@ -28,12 +28,12 @@ class TuningEngine:
         if self.exp_state.best_f1_score < f1_score:
             self.exp_state.best_f1_score = f1_score
             self.exp_state.best_associated_accuracy = accuracy
-            self.exp_state.best_config = mrf_hp_config
+            self.exp_state.best_hp_config = mrf_hp_config
 
         if self.exp_state.worst_f1_score > f1_score:
             self.exp_state.worst_f1_score = f1_score
             self.exp_state.worst_associated_accuracy = accuracy
-            self.exp_state.worst_config = mrf_hp_config
+            self.exp_state.worst_hp_config = mrf_hp_config
 
         return -f1_score
 
