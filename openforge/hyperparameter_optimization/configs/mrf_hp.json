@@ -1,0 +1,26 @@
+[
+    {
+        "name": "ternary_alpha",
+        "short_descr": "value in ternary factor when all variables are 0",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default": 1
+    },
+    {
+        "name": "ternary_beta",
+        "short_descr": "value in ternary factor when only one variable is 1",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default": 1
+    },
+    {
+        "name": "ternary_gamma",
+        "short_descr": "value in ternary factor when all variables are 1",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default": 1
+    }
+]
