@@ -17,7 +17,7 @@ from openforge.feature_extraction.similarity_metrics import (
     cosine_similarity,
     jaccard_index,
 )
-from openforge.utils.custom_logging import get_custom_logger
+from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.util import create_dir, get_proj_dir
 
 
@@ -270,7 +270,7 @@ column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle",
     log_dir = os.path.join(proj_dir, f"logs/{instance_name}")
     create_dir(log_dir, force=True)
 
-    logger = get_custom_logger(log_dir, args.log_level)
+    logger = create_custom_logger(log_dir, args.log_level)
     logger.info(args)
 
     with open(args.arts_data_filepath, "rb") as f:
