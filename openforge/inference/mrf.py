@@ -9,6 +9,8 @@ from pgmpy.inference import Mplp
 from pgmpy.models import MarkovNetwork
 from sklearn.metrics import accuracy_score, f1_score
 
+from openforge.utils.custom_logging import get_logger
+
 
 def convert_var_name_to_var_id(var_name):
     var_id = tuple(int(elem) for elem in var_name.split("_")[1].split("-"))
@@ -17,10 +19,10 @@ def convert_var_name_to_var_id(var_name):
 
 
 class MRFWrapper:
-    def __init__(self, prior_filepath: str, num_concepts: int, logger):
+    def __init__(self, prior_filepath: str, num_concepts: int):
         self.prior_data = pd.read_csv(prior_filepath)
         self.num_concepts = num_concepts
-        self.logger = logger
+        self.logger = get_logger()
 
     def create_mrf(self, mrf_hp_config: dict) -> MarkovNetwork:
         ternary_table = [

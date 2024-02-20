@@ -1,11 +1,12 @@
 from ConfigSpace import ConfigurationSpace
 
 from openforge.hyperparameter_optimization.bo_optimizer import get_bo_optimizer
+from openforge.utils.custom_logging import get_logger
 from openforge.utils.exp_tracker import ExperimentState
 
 
 class TuningEngine:
-    def __init__(self, exp_config, mrf_wrapper, mrf_hp_space, logger):
+    def __init__(self, exp_config, mrf_wrapper, mrf_hp_space):
         self.exp_config = exp_config
         self.mrf_wrapper = mrf_wrapper
         self.mrf_hp_space = mrf_hp_space
@@ -14,7 +15,7 @@ class TuningEngine:
             self.exp_config, self.mrf_hp_space, self.bo_target_function
         )
         self.exp_state = ExperimentState()
-        self.logger = logger
+        self.logger = get_logger()
 
     def bo_target_function(self, mrf_hp_config: ConfigurationSpace, seed: int):
         """
