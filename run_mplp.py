@@ -5,7 +5,12 @@ from openforge.hyperparameter_optimization.hp_space import (
 )
 from openforge.hyperparameter_optimization.tuning import TuningEngine
 from openforge.inference.mrf import MRFWrapper
-from openforge.utils.util import fix_global_random_state, parse_config
+from openforge.utils.custom_logging import get_custom_logger
+from openforge.utils.util import (
+    create_dir,
+    fix_global_random_state,
+    parse_config,
+)
 
 
 if __name__ == "__main__":
@@ -30,10 +35,20 @@ if __name__ == "__main__":
     hp_space = MRFHyperparameterSpace(
         config.get("hp_optimization", "hp_spec_filepath"),
         config.getint("hp_optimization", "random_seed"),
-    )
+    ).create_hp_space()
+
+    # Create logger
+    log_dir = config.get("mrf", "log_dir")
+    create_dir(log_dir, force=False)
+    logger = get_custom_logger(log_dir)
 
     # Create MRF wrapper
-    mrf_wrapper = MRFWrapper(config)
+    mrf_wrapper = MRFWrapper(
+        config.get("mrf", "prior_filepath"),
+        config.getint("mrf", "num_concepts"),
+        logger,
+    )
 
     # Hyperparameter tuning
     tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
+    tuning_engine.run()
