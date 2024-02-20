@@ -10,11 +10,20 @@ from pgmpy.factors.discrete import DiscreteFactor
 from pgmpy.inference import Mplp
 from pgmpy.models import MarkovNetwork
 
-from openforge.utils.custom_logging import get_custom_logger
+from openforge.utils.custom_logging import create_custom_logger
 from sklearn.metrics import accuracy_score, f1_score
 
 
-TERNARY_TABLE = [1.2, 1.2, 1.2, 0, 1.2, 0, 0, 1]
+TERNARY_TABLE = [
+    1,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+]
 
 
 def convert_var_name_to_var_id(var_name):
@@ -29,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prior_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts-context_top-40-nodes/\
+        default="/home/congtj/openforge/exps/arts-context_top-30-nodes/\
 arts_mrf_data_valid_with_ml_prior.csv",
         help="Path to prior data.",
     )
@@ -37,7 +46,7 @@ arts_mrf_data_valid_with_ml_prior.csv",
     parser.add_argument(
         "--num_concepts",
         type=int,
-        default=21,
+        default=13,
         help="Number of concepts in the vocabulary to be cleaned.",
     )
 
@@ -54,7 +63,7 @@ pgmpy_mplp",
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    logger = get_custom_logger(args.log_dir)
+    logger = create_custom_logger(args.log_dir)
     logger.info(args)
 
     prior_df = pd.read_csv(args.prior_data)

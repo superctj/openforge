@@ -3,15 +3,17 @@ import os
 
 from datetime import datetime
 
+LOGGER_NAME = "openforge"
 
-def get_custom_logger(log_dir: str, log_level=logging.INFO):
+
+def create_custom_logger(log_dir: str, log_level=logging.INFO):
     if not os.path.isdir(log_dir):
         log_filepath = log_dir
     else:
         cur_datetime = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         log_filepath = os.path.join(log_dir, f"{cur_datetime}.log")
 
-    logger = logging.getLogger("openforge")
+    logger = logging.getLogger(LOGGER_NAME)
     logger.setLevel(log_level)
 
     # create the logging file handler
@@ -23,3 +25,7 @@ def get_custom_logger(log_dir: str, log_level=logging.INFO):
     logger.addHandler(f_handler)
 
     return logger
+
+
+def get_logger():
+    return logging.getLogger(LOGGER_NAME)

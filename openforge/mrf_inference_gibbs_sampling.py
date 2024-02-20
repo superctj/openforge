@@ -10,7 +10,7 @@ from pgmpy.factors.discrete import DiscreteFactor
 from pgmpy.models import MarkovNetwork
 from pgmpy.sampling import GibbsSampling
 
-from openforge.utils.custom_logging import get_custom_logger
+from openforge.utils.custom_logging import create_custom_logger
 
 
 TERNARY_TABLE = [1, 1, 1, 0, 1, 0, 0, 1]
@@ -53,7 +53,7 @@ pgmpy_gibbs_sampling",
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    logger = get_custom_logger(args.log_dir)
+    logger = create_custom_logger(args.log_dir)
     logger.info(args)
 
     prior_df = pd.read_csv(args.prior_data)

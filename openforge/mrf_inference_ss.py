@@ -5,7 +5,7 @@ import time
 import pandas as pd
 import pyAgrum as gum
 
-from openforge.utils.custom_logging import get_custom_logger
+from openforge.utils.custom_logging import create_custom_logger
 from sklearn.metrics import accuracy_score, f1_score
 
 
@@ -44,7 +44,7 @@ pyagrum_ss",
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    logger = get_custom_logger(args.log_dir)
+    logger = create_custom_logger(args.log_dir)
     logger.info(args)
 
     prior_df = pd.read_csv(args.prior_data)
