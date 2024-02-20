@@ -5,7 +5,7 @@
         "type": "float",
         "min_val": 0,
         "max_val": 1,
-        "default": 1
+        "default_val": 1
     },
     {
         "name": "ternary_beta",
@@ -13,7 +13,7 @@
         "type": "float",
         "min_val": 0,
         "max_val": 1,
-        "default": 1
+        "default_val": 1
     },
     {
         "name": "ternary_gamma",
@@ -21,6 +21,6 @@
         "type": "float",
         "min_val": 0,
         "max_val": 1,
-        "default": 1
+        "default_val": 1
     }
 ]
