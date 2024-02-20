@@ -49,12 +49,12 @@ class TuningEngine:
         )
 
         self.logger.info(
-            f"\nWorst MRF hyperparameters:\n{self.exp_state.worst_config}"
+            f"\nWorst MRF hyperparameters:\n{self.exp_state.worst_hp_config}"
         )
         self.logger.info(f"Worst F1 score: {self.exp_state.worst_f1_score:.2f}")
         self.logger.info(
             f"Accuracy: {self.exp_state.worst_associated_accuracy:.2f}"
         )
 
-        assert dict(best_hp_config) == dict(self.exp_state.best_config)
+        assert dict(best_hp_config) == dict(self.exp_state.best_hp_config)
         return best_hp_config
