@@ -44,7 +44,7 @@ class MRFHyperparameterSpace:
                     name=hp_name,
                     lower=float(hp_spec["min_val"]),
                     upper=float(hp_spec["max_val"]),
-                    default_value=float(hp_spec["reset_val"]),
+                    default_value=float(hp_spec["default_val"]),
                 )
             else:
                 raise ValueError("MRF Hyperparameters should have float type.")
