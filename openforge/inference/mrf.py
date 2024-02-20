@@ -60,7 +60,7 @@ class MRFWrapper:
         ternary_combos = combinations(range(1, self.num_concepts + 1), 3)
         end = time.time()
         self.logger.info(
-            f"Time taken to generate ternary combos: {end-start:.2f} seconds"
+            f"Time to generate ternary combos: {end-start:.2f} seconds"
         )
 
         start = time.time()
