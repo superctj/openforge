@@ -33,9 +33,11 @@ def create_dir(dir_path: str, force: bool = False):
             shutil.rmtree(dir_path)
             os.makedirs(dir_path)
         else:
-            raise ValueError(
-                f"Directory {dir_path} already exists and not forced to create the directory."
+            error_msg = (
+                f"Directory {dir_path} already exists and not forced to create"
+                " the directory."
             )
+            raise ValueError(error_msg)
 
 
 def fix_global_random_state(seed: int):
