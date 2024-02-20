@@ -11,7 +11,7 @@ def get_custom_logger(log_dir: str, log_level=logging.INFO):
         cur_datetime = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         log_filepath = os.path.join(log_dir, f"{cur_datetime}.log")
 
-    logger = logging.getLogger(log_filepath)
+    logger = logging.getLogger("openforge")
     logger.setLevel(log_level)
 
     # create the logging file handler
@@ -21,4 +21,5 @@ def get_custom_logger(log_dir: str, log_level=logging.INFO):
 
     # add handler to logger object
     logger.addHandler(f_handler)
+
     return logger
