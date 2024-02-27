@@ -13,17 +13,39 @@ from pgmpy.models import MarkovNetwork
 from openforge.utils.custom_logging import create_custom_logger
 from sklearn.metrics import accuracy_score, f1_score
 
-
+# ARTS - 40
 TERNARY_TABLE = [
-    1,
-    1,
-    1,
+    0.6937840237588209,
+    0.9999718175956511,
+    0.9999718175956511,
     0,
-    1,
+    0.9999718175956511,
     0,
     0,
-    1,
+    0.999976048166078,
 ]
+# TERNARY_TABLE = [
+#     0.7,
+#     1,
+#     1,
+#     0,
+#     1,
+#     0,
+#     0,
+#     1,
+# ]
+
+# ARTS-20
+# TERNARY_TABLE = [
+#     0.6848856139369088,
+#     0.9213272477855319,
+#     0.9213272477855319,
+#     0,
+#     0.9213272477855319,
+#     0,
+#     0,
+#     0.9986992365040954,
+# ]
 
 
 def convert_var_name_to_var_id(var_name):
@@ -38,23 +60,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prior_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts-context_top-30-nodes/\
-arts_mrf_data_valid_with_ml_prior.csv",
+        default="/home/congtj/openforge/exps/arts-context_top-40-nodes/arts_mrf_data_test_with_ml_prior.csv",  # noqa: E501
         help="Path to prior data.",
     )
 
     parser.add_argument(
         "--num_concepts",
         type=int,
-        default=13,
+        default=19,
         help="Number of concepts in the vocabulary to be cleaned.",
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/arts-context_top-40-nodes/\
-pgmpy_mplp",
+        default="/home/congtj/openforge/logs/arts-context_top-40-nodes/pgmpy_mplp",  # noqa: E501
         help="Directory to save logs.",
     )
 
