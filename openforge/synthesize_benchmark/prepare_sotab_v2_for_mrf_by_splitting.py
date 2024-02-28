@@ -6,8 +6,6 @@ from itertools import combinations
 
 import pandas as pd
 
-from openforge.utils.custom_logging import create_custom_logger
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
