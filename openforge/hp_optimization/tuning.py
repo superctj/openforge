@@ -1,8 +1,9 @@
 from ConfigSpace import ConfigurationSpace
 
-from openforge.hyperparameter_optimization.bo_optimizer import get_bo_optimizer
+from openforge.hp_optimization.bo_optimizer import get_bo_optimizer
 from openforge.utils.custom_logging import get_logger
 from openforge.utils.exp_tracker import ExperimentState
+from openforge.utils.mrf_common import evaluate_inference_results
 
 
 class TuningEngine:
@@ -24,7 +25,9 @@ class TuningEngine:
 
         mrf = self.mrf_wrapper.create_mrf(dict(mrf_hp_config))
         results = self.mrf_wrapper.run_mplp_inference(mrf)
-        f1_score, accuracy = self.mrf_wrapper.evaluate_results(results)
+        f1_score, accuracy = evaluate_inference_results(
+            self.mrf_wrapper.prior_data, results
+        )
 
         if self.exp_state.best_f1_score < f1_score:
             self.exp_state.best_f1_score = f1_score

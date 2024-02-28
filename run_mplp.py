@@ -1,11 +1,9 @@
 import argparse
 import os
 
-from openforge.hyperparameter_optimization.hp_space import (
-    MRFHyperparameterSpace,
-)
-from openforge.hyperparameter_optimization.tuning import TuningEngine
-from openforge.inference.mrf import MRFWrapper
+from openforge.hp_optimization.hp_space import MRFHyperparameterSpace
+from openforge.hp_optimization.tuning import TuningEngine
+from openforge.inference.pgmpy_mrf import MRFWrapper
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.util import fix_global_random_state, parse_config
 
@@ -44,10 +42,7 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     # Create MRF wrapper
-    mrf_wrapper = MRFWrapper(
-        config.get("mrf", "prior_filepath"),
-        config.getint("mrf", "num_concepts"),
-    )
+    mrf_wrapper = MRFWrapper(config.get("mrf", "prior_filepath"))
 
     # Hyperparameter tuning
     tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
