@@ -14,26 +14,26 @@ from openforge.utils.custom_logging import create_custom_logger
 from sklearn.metrics import accuracy_score, f1_score
 
 # ARTS - 40
-TERNARY_TABLE = [
-    0.6937840237588209,
-    0.9999718175956511,
-    0.9999718175956511,
-    0,
-    0.9999718175956511,
-    0,
-    0,
-    0.999976048166078,
-]
 # TERNARY_TABLE = [
-#     0.7,
-#     1,
-#     1,
+#     0.6937840237588209,
+#     0.9999718175956511,
+#     0.9999718175956511,
 #     0,
-#     1,
+#     0.9999718175956511,
 #     0,
 #     0,
-#     1,
+#     0.999976048166078,
 # ]
+TERNARY_TABLE = [
+    0.7,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+]
 
 # ARTS-20
 # TERNARY_TABLE = [
@@ -75,8 +75,8 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--boost",
-        type=bool,
-        default=False,
+        type=str,
+        default="none",
         help="Whether to use heuristics or problem semantcis as hard evidence to boost MRF inference.",  # noqa: E501
     )
 
@@ -94,6 +94,7 @@ if __name__ == "__main__":
 
     logger = create_custom_logger(args.log_dir)
     logger.info(args)
+    logger.info(f"Ternary table: {TERNARY_TABLE}")
 
     prior_df = pd.read_csv(args.prior_data)
     mrf = MarkovNetwork()
@@ -103,7 +104,7 @@ if __name__ == "__main__":
         var_name = row.relation_variable_name
         mrf.add_node(var_name)
 
-        if not args.boost:
+        if args.boost == "none":
             confdc_score = row.positive_label_confidence_score
             prior = [1 - confdc_score, confdc_score]
         else:
@@ -161,7 +162,7 @@ if __name__ == "__main__":
     mplp = Mplp(mrf)
 
     start_time = time.time()
-    results = mplp.map_query(tighten_triplet=True)
+    results = mplp.map_query(tighten_triplet=False)
     end_time = time.time()
     logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
 
