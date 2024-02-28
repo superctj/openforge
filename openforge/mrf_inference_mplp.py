@@ -47,6 +47,8 @@ TERNARY_TABLE = [
 #     0.9986992365040954,
 # ]
 
+DBPEDIA_PREFIX = "https:"
+
 
 def convert_var_name_to_var_id(var_name):
     var_id = tuple(int(elem) for elem in var_name.split("_")[1].split("-"))
@@ -72,6 +74,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--boost",
+        type=bool,
+        default=False,
+        help="Whether to use heuristics or problem semantcis as hard evidence to boost MRF inference.",  # noqa: E501
+    )
+
+    parser.add_argument(
         "--log_dir",
         type=str,
         default="/home/congtj/openforge/logs/arts-context_top-40-nodes/pgmpy_mplp",  # noqa: E501
@@ -94,10 +103,22 @@ if __name__ == "__main__":
         var_name = row.relation_variable_name
         mrf.add_node(var_name)
 
-        confdc_score = row.positive_label_confidence_score
-        prior = [1 - confdc_score, confdc_score]
-        unary_factor = DiscreteFactor([var_name], cardinality=[2], values=prior)
+        if not args.boost:
+            confdc_score = row.positive_label_confidence_score
+            prior = [1 - confdc_score, confdc_score]
+        else:
+            concept1_from_dbpedia = row.label_1.startswith(DBPEDIA_PREFIX)
+            concept2_from_dbpedia = row.label_2.startswith(DBPEDIA_PREFIX)
 
+            if concept1_from_dbpedia and concept2_from_dbpedia:
+                prior = [1, 0]
+            elif not concept1_from_dbpedia and not concept2_from_dbpedia:
+                prior = [1, 0]
+            else:
+                confdc_score = row.positive_label_confidence_score
+                prior = [1 - confdc_score, confdc_score]
+
+        unary_factor = DiscreteFactor([var_name], cardinality=[2], values=prior)
         mrf.add_factors(unary_factor)
 
     num_nodes = len(mrf.nodes())
@@ -110,9 +131,7 @@ if __name__ == "__main__":
     start = time.time()
     ternary_combos = combinations(range(1, args.num_concepts + 1), 3)
     end = time.time()
-    logger.info(
-        f"Time taken to generate ternary combos: {end-start:.2f} seconds"
-    )
+    logger.info(f"Time to generate ternary combos: {end-start:.2f} seconds")
 
     start = time.time()
     for combo in ternary_combos:
@@ -129,7 +148,7 @@ if __name__ == "__main__":
         mrf.add_factors(ternary_factor)
 
     end = time.time()
-    logger.info(f"Time taken to add ternary factors: {end-start:.2f} seconds")
+    logger.info(f"Time to add ternary factors: {end-start:.2f} seconds")
 
     logger.info(f"Number of MRF edges: {len(mrf.edges())}")
     logger.info(f"MRF edges:\n{mrf.edges()}")
@@ -142,7 +161,7 @@ if __name__ == "__main__":
     mplp = Mplp(mrf)
 
     start_time = time.time()
-    results = mplp.map_query(tighten_triplet=False)
+    results = mplp.map_query(tighten_triplet=True)
     end_time = time.time()
     logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
 
