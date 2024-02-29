@@ -25,8 +25,12 @@ TERNARY_FACTOR_CONFIG = np.array(
 
 
 class MRFWrapper:
-    def __init__(self, prior_filepath: str):
+    def __init__(self, prior_filepath: str, **kwargs):
         self.prior_data = pd.read_csv(prior_filepath)
+        self.num_iters = kwargs.get("num_iters", 200)
+        self.damping = kwargs.get("damping", 0.5)
+        self.temperature = kwargs.get("temperature", 0)
+
         self.num_concepts = self._count_num_concepts()
         self.logger = get_logger()
 
@@ -117,7 +121,10 @@ class MRFWrapper:
 
         start_time = time.time()
         lbp_arrays, _ = lbp.run_with_diffs(
-            lbp_arrays, num_iters=200, temperature=0
+            lbp_arrays,
+            num_iters=self.num_iters,
+            damping=self.damping,
+            temperature=self.temperature,
         )
         beliefs = lbp.get_beliefs(lbp_arrays)
         decoded_states = infer.decode_map_states(beliefs)
