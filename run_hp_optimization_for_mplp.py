@@ -33,7 +33,7 @@ if __name__ == "__main__":
     ).create_hp_space()
 
     # Create logger
-    log_dir = config.get("mrf", "log_dir")
+    log_dir = config.get("results", "log_dir")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 

@@ -12,7 +12,7 @@ def get_bo_optimizer(
 ):
     scenario = Scenario(
         configspace=mrf_hp_space,
-        output_directory=exp_config["mrf"]["log_dir"],
+        output_directory=exp_config["results"]["log_dir"],
         deterministic=True,
         objectives="cost",  # minimize the objective
         n_trials=exp_config.getint("hp_optimization", "n_trials"),

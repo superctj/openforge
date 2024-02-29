@@ -33,7 +33,7 @@ if __name__ == "__main__":
     ).create_hp_space()
 
     # Create logger
-    log_dir = config.get("mrf", "log_dir")
+    log_dir = config.get("results", "log_dir")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
@@ -42,7 +42,12 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     # Create MRF wrapper
-    mrf_wrapper = MRFWrapper(config.get("mrf", "prior_filepath"))
+    mrf_wrapper = MRFWrapper(
+        config.get("mrf_lbp", "prior_filepath"),
+        num_iters=config.getint("mrf_lbp", "num_iters"),
+        damping=config.getfloat("mrf_lbp", "damping"),
+        temperature=config.getfloat("mrf_lbp", "temperature"),
+    )
 
     # Hyperparameter tuning
     tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
