@@ -9,9 +9,9 @@ import pandas as pd
 from pgmpy.factors.discrete import DiscreteFactor
 from pgmpy.inference import Mplp
 from pgmpy.models import MarkovNetwork
+from sklearn.metrics import accuracy_score, f1_score
 
 from openforge.utils.custom_logging import create_custom_logger
-from sklearn.metrics import accuracy_score, f1_score
 
 # ARTS - 40
 # TERNARY_TABLE = [
