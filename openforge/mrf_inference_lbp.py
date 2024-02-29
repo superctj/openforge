@@ -47,14 +47,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prior_data",
         type=str,
-        default="/home/congtj/openforge/exps/arts-context_top-20-nodes/arts_mrf_data_test_with_ml_prior.csv",  # noqa: E501
+        default="/home/congtj/openforge/exps/arts-context_top-40-nodes/arts_mrf_data_test_with_ml_prior.csv",  # noqa: E501
         help="Path to prior data.",
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/arts-context_top-20-nodes/pgmax_lbp",  # noqa: E501
+        default="/home/congtj/openforge/logs/arts-context_top-40-nodes/pgmax_lbp",  # noqa: E501
         help="Directory to save logs.",
     )
 
@@ -129,19 +129,19 @@ if __name__ == "__main__":
 
     start_time = time.time()
     lbp_arrays, _ = lbp.run_with_diffs(lbp_arrays, num_iters=200, temperature=0)
+    beliefs = lbp.get_beliefs(lbp_arrays)
+    decoded_states = infer.decode_map_states(beliefs)
+    results = list(decoded_states.values())[0]
+
     end_time = time.time()
     logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
-
-    beliefs = lbp.get_beliefs(lbp_arrays)
-    map_states = infer.decode_map_states(beliefs)
-    results = list(map_states.values())[0]
 
     y_true, y_pred = [], []
     for row in prior_df.itertuples():
         logger.info("-" * 80)
 
         var_name = row.relation_variable_name
-        pred = float(results[var_name])
+        pred = int(results[var_name])
 
         y_true.append(row.relation_variable_label)
         y_pred.append(pred)
