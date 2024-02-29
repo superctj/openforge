@@ -19,8 +19,8 @@ def evaluate_inference_results(prior_data: pd.DataFrame, results: dict):
         logger.info("-" * 80)
 
         var_name = row.relation_variable_name
-        var_label = row.relation_variable_label
-        pred = results[var_name]
+        var_label = int(row.relation_variable_label)
+        pred = int(results[var_name])
 
         y_true.append(row.relation_variable_label)
         y_pred.append(pred)
