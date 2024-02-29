@@ -27,9 +27,12 @@ TERNARY_FACTOR_CONFIG = np.array(
 class MRFWrapper:
     def __init__(self, prior_filepath: str, **kwargs):
         self.prior_data = pd.read_csv(prior_filepath)
-        self.num_iters = kwargs.get("num_iters", 200)
-        self.damping = kwargs.get("damping", 0.5)
-        self.temperature = kwargs.get("temperature", 0)
+        self.tune_lbp_hp = kwargs.get("tune_lbp_hp", False)
+
+        if not self.tune_lbp_hp:
+            self.num_iters = kwargs.get("num_iters", 200)
+            self.damping = kwargs.get("damping", 0.5)
+            self.temperature = kwargs.get("temperature", 0)
 
         self.num_concepts = self._count_num_concepts()
         self.logger = get_logger()
@@ -115,17 +118,27 @@ class MRFWrapper:
         return fg
 
     # LBP inference
-    def run_inference(self, fg) -> dict:
+    def run_inference(self, fg, mrf_hp_config: dict) -> dict:
         lbp = infer.build_inferer(fg.bp_state, backend="bp")
         lbp_arrays = lbp.init()
 
         start_time = time.time()
-        lbp_arrays, _ = lbp.run_with_diffs(
-            lbp_arrays,
-            num_iters=self.num_iters,
-            damping=self.damping,
-            temperature=self.temperature,
-        )
+
+        if self.tune_lbp_hp:
+            lbp_arrays, _ = lbp.run_with_diffs(
+                lbp_arrays,
+                num_iters=mrf_hp_config["num_iters"],
+                damping=mrf_hp_config["damping"],
+                temperature=mrf_hp_config["temperature"],
+            )
+        else:
+            lbp_arrays, _ = lbp.run_with_diffs(
+                lbp_arrays,
+                num_iters=self.num_iters,
+                damping=self.damping,
+                temperature=self.temperature,
+            )
+
         beliefs = lbp.get_beliefs(lbp_arrays)
         decoded_states = infer.decode_map_states(beliefs)
         results = list(decoded_states.values())[0]

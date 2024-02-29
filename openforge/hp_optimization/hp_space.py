@@ -46,8 +46,15 @@ class MRFHyperparameterSpace:
                     upper=float(hp_spec["max_val"]),
                     default_value=float(hp_spec["default_val"]),
                 )
+            elif hp_type == "int":
+                hp = CSH.UniformIntegerHyperparameter(
+                    name=hp_name,
+                    lower=int(hp_spec["min_val"]),
+                    upper=int(hp_spec["max_val"]),
+                    default_value=int(hp_spec["default_val"]),
+                )
             else:
-                raise ValueError("MRF Hyperparameters should have float type.")
+                raise ValueError(f"Unsupported hyperparameter type: {hp_type}.")
 
             all_hps.append(hp)
 

@@ -42,12 +42,19 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     # Create MRF wrapper
-    mrf_wrapper = MRFWrapper(
-        config.get("mrf_lbp", "prior_filepath"),
-        num_iters=config.getint("mrf_lbp", "num_iters"),
-        damping=config.getfloat("mrf_lbp", "damping"),
-        temperature=config.getfloat("mrf_lbp", "temperature"),
-    )
+    if config.getboolean("mrf_lbp", "tune_lbp_hp"):
+        mrf_wrapper = MRFWrapper(
+            config.get("mrf_lbp", "prior_filepath"),
+            tune_lbp_hp=True,
+        )
+    else:
+        mrf_wrapper = MRFWrapper(
+            config.get("mrf_lbp", "prior_filepath"),
+            tune_lbp_hp=False,
+            num_iters=config.getint("mrf_lbp", "num_iters"),
+            damping=config.getfloat("mrf_lbp", "damping"),
+            temperature=config.getfloat("mrf_lbp", "temperature"),
+        )
 
     # Hyperparameter tuning
     tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)

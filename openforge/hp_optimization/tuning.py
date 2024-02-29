@@ -24,7 +24,7 @@ class TuningEngine:
         """
 
         mrf = self.mrf_wrapper.create_mrf(dict(mrf_hp_config))
-        results = self.mrf_wrapper.run_inference(mrf)
+        results = self.mrf_wrapper.run_inference(mrf, dict(mrf_hp_config))
         f1_score, accuracy = evaluate_inference_results(
             self.mrf_wrapper.prior_data, results
         )
