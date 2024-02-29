@@ -92,7 +92,8 @@ class MRFWrapper:
 
         return mrf
 
-    def run_mplp_inference(self, mrf) -> dict:
+    # MPLP inference
+    def run_inference(self, mrf) -> dict:
         mplp = Mplp(mrf)
 
         start_time = time.time()
