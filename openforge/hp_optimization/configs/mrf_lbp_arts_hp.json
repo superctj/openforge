@@ -1,0 +1,50 @@
+[
+    {
+        "name": "ternary_alpha",
+        "short_descr": "value in ternary factor when all variables are 0",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "ternary_beta",
+        "short_descr": "value in ternary factor when only one variable is 1",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "ternary_gamma",
+        "short_descr": "value in ternary factor when all variables are 1",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default_val": 0.5
+    },
+    {
+        "name": "num_iters",
+        "short_descr": "number of iterations for loopy belief propagation",
+        "type": "int",
+        "min_val": 100,
+        "max_val": 1000,
+        "default_val": 200
+    },
+    {
+        "name": "damping",
+        "short_descr": "damping factor for loopy belief propagation",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default_val": 0.5
+    },
+    {
+        "name": "temperature",
+        "short_descr": "temperature for loopy belief propagation",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default_val": 0
+    }
+]
