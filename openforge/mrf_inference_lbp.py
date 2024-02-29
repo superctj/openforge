@@ -14,14 +14,14 @@ from sklearn.metrics import accuracy_score, f1_score
 from openforge.utils.custom_logging import create_custom_logger
 
 TERNARY_TABLE = [
-    0.6937840237588209,
-    0.9999718175956511,
-    0.9999718175956511,
+    0.4634667074932117,
+    0.7843083818410356,
+    0.7843083818410356,
     1e-9,
-    0.9999718175956511,
+    0.7843083818410356,
     1e-9,
     1e-9,
-    0.999976048166078,
+    1e-9,
 ]
 
 log_ternary_table = np.log(np.array(TERNARY_TABLE))
@@ -49,6 +49,27 @@ if __name__ == "__main__":
         type=str,
         default="/home/congtj/openforge/exps/arts-context_top-40-nodes/arts_mrf_data_test_with_ml_prior.csv",  # noqa: E501
         help="Path to prior data.",
+    )
+
+    parser.add_argument(
+        "--num_iters",
+        type=int,
+        default=1000,
+        help="Number of iterations for loopy belief propagation.",
+    )
+
+    parser.add_argument(
+        "--damping",
+        type=float,
+        default=0.5,
+        help="Dampling for loopy belief propagation.",
+    )
+
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0,
+        help="Temperature for loopy belief propagation.",
     )
 
     parser.add_argument(
@@ -128,7 +149,12 @@ if __name__ == "__main__":
     lbp_arrays = lbp.init()
 
     start_time = time.time()
-    lbp_arrays, _ = lbp.run_with_diffs(lbp_arrays, num_iters=200, temperature=0)
+    lbp_arrays, _ = lbp.run_with_diffs(
+        lbp_arrays,
+        num_iters=args.num_iters,
+        damping=args.damping,
+        temperature=args.temperature,
+    )
     beliefs = lbp.get_beliefs(lbp_arrays)
     decoded_states = infer.decode_map_states(beliefs)
     results = list(decoded_states.values())[0]
