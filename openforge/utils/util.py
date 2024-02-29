@@ -5,7 +5,8 @@ import shutil
 from configparser import ConfigParser
 
 import numpy as np
-import torch
+
+# import torch
 
 
 def get_proj_dir(filepath: str, file_level: int = 3) -> str:
@@ -50,7 +51,7 @@ def fix_global_random_state(seed: int):
 
     random.seed(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
+    # torch.manual_seed(seed)
 
 
 def parse_config(config_path: str) -> ConfigParser:
