@@ -13,18 +13,28 @@ from sklearn.metrics import accuracy_score, f1_score
 
 from openforge.utils.custom_logging import create_custom_logger
 
-TERNARY_TABLE = [
-    0.4634667074932117,
-    0.7843083818410356,
-    0.7843083818410356,
-    1e-9,
-    0.7843083818410356,
-    1e-9,
-    1e-9,
-    1e-9,
-]
+# TERNARY_TABLE = [
+#     0.4459630461679717,
+#     0.5260795123585992,
+#     0.5260795123585992,
+#     1e-9,
+#     0.5260795123585992,
+#     1e-9,
+#     1e-9,
+#     0.43414671350935646,
+# ]  # BO-GP
 
-log_ternary_table = np.log(np.array(TERNARY_TABLE))
+# TERNARY_TABLE = [
+#     0.6576313720060961,
+#     0.8430622522793525,
+#     0.8430622522793525,
+#     1e-9,
+#     0.8430622522793525,
+#     1e-9,
+#     1e-9,
+#     0.5040575110778069,
+# ]  # BO-RF
+# log_ternary_table = np.log(np.array(TERNARY_TABLE))
 
 unary_factor_config = np.array([[0], [1]])
 ternary_factor_config = np.array(
@@ -52,23 +62,44 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--ternary_alpha",
+        type=float,
+        required=True,
+        help="Ternary factor value for assignment [0, 0, 0].",
+    )
+
+    parser.add_argument(
+        "--ternary_beta",
+        type=float,
+        required=True,
+        help="Ternary factor value for assignments [0, 0, 1], [0, 1, 0] and [1, 0, 0].",  # noqa: E501
+    )
+
+    parser.add_argument(
+        "--ternary_gamma",
+        type=float,
+        required=True,
+        help="Ternary factor value for assignment [1, 1, 1].",
+    )
+
+    parser.add_argument(
         "--num_iters",
         type=int,
-        default=1000,
+        default=575,
         help="Number of iterations for loopy belief propagation.",
     )
 
     parser.add_argument(
         "--damping",
         type=float,
-        default=0.5,
+        default=0.8996097484570096,
         help="Dampling for loopy belief propagation.",
     )
 
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0,
+        default=0.06096136506950575,
         help="Temperature for loopy belief propagation.",
     )
 
@@ -81,12 +112,24 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    ternary_table = [
+        args.ternary_alpha,  # 0, 0, 0
+        args.ternary_beta,  # 0, 0, 1
+        args.ternary_beta,  # 0, 1, 0
+        1e-9,  # 0, 1, 1
+        args.ternary_beta,  # 1, 0, 0
+        1e-9,  # 1, 0, 1
+        1e-9,  # 1, 1, 0
+        args.ternary_gamma,  # 1, 1, 1
+    ]
+    log_ternary_table = np.log(np.array(ternary_table))
+
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
     logger = create_custom_logger(args.log_dir)
     logger.info(args)
-    logger.info(f"Ternary table: {TERNARY_TABLE}")
+    logger.info(f"Ternary table: {ternary_table}")
 
     prior_df = pd.read_csv(args.prior_data)
 
