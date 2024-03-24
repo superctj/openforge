@@ -26,7 +26,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 STOPWORDS = set(stopwords.words("english"))
 
 SYMBPATT = r"\@" + re.escape(
-    u"".join(chr(i) for i in range(0xFFFF) if unicodedata.category(chr(i)) == "Sc")
+    "".join(
+        chr(i) for i in range(0xFFFF) if unicodedata.category(chr(i)) == "Sc"
+    )
 )
 PUNCTPATT = r"\!\"\#\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\[\\\]\^\_\`\{\|\}\~"
 
@@ -45,27 +47,26 @@ WHITE = re.compile(r"\s+")
 
 ALPHANUM = re.compile(r"(?:[0-9]+[a-zA-Z]|[a-zA-Z]+[0-9])[a-zA-Z0-9]*")
 NUMSYMB = re.compile(
-    r"(?=.*[0-9,\.])(?=.*[" + SYMBPATT + r"]+)([0-9" + SYMBPATT + r"]+)", re.UNICODE
+    r"(?=.*[0-9,\.])(?=.*[" + SYMBPATT + r"]+)([0-9" + SYMBPATT + r"]+)",
+    re.UNICODE,
 )
 
 FASTTEXTURL = "https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/"
-# GLOVEURL = "http://nlp.stanford.edu/data/"
-
 VALUE_SIGNATURE_ATTEMPTS = 100
 
 
 def shingles(value: str) -> Iterable[str]:
-    """
-    Generate multi-word tokens delimited by punctuation.
-        Parameters
-        ----------
-        value : str
-            The value to shingle.
+    """Generate multi-word tokens delimited by punctuation.
 
-        Returns
-        -------
-        Iterable[str]
-            A generator of shingles.
+    Parameters
+    ----------
+    value : str
+        The value to shingle.
+
+    Returns
+    -------
+    Iterable[str]
+        A generator of shingles.
     """
 
     delimiterPattern = re.compile(r"[^\w\s\-_@&]+")
@@ -82,8 +83,8 @@ class FasttextTransformer:
         embedding_model_lang="en",
         cache_dir: Optional[str] = None,
     ):
-        """
-        Instantiate a new embedding-based transformer
+        """Instantiate a new embedding-based transformer.
+
         Parameters
         ----------
         token_pattern : str
@@ -92,7 +93,8 @@ class FasttextTransformer:
         max_df : float
             Percentage of values the token can appear in before it is ignored.
         stop_words : Iterable[str]
-            A collection of stopwords to ignore that defaults to NLTK's English stopwords.
+            A collection of stopwords to ignore that defaults to NLTK's English
+            stopwords.
         embedding_model_lang : str
             The embedding model language.
         cache_dir : Optional[str]
@@ -105,7 +107,9 @@ class FasttextTransformer:
         self._stop_words = stop_words
         self._embedding_model_lang = embedding_model_lang
         self._cache_dir = (
-            cache_dir if cache_dir is not None and os.path.isdir(cache_dir) else None
+            cache_dir
+            if cache_dir is not None and os.path.isdir(cache_dir)
+            else None
         )
 
         self._embedding_model = self.get_embedding_model(
@@ -125,9 +129,8 @@ class FasttextTransformer:
     def cache_dir(self) -> Optional[str]:
         return self._cache_dir
 
-    def _download_fasttext(self, model_file_name: str, chunk_size: int = 2 ** 13):
-        """
-        Download pre-trained common-crawl vectors from fastText's website
+    def _download_fasttext(self, model_file_name: str, chunk_size: int = 2**13):
+        """Download pre-trained common-crawl vectors from fastText's website
         https://fasttext.cc/docs/en/crawl-vectors.html
 
         Parameters
@@ -166,15 +169,17 @@ class FasttextTransformer:
         os.rename(download_file_name, write_file_name)
 
     def _download_model(self, if_exists: str = "strict"):
-        """
-        Download the pre-trained model file.
+        """Download the pre-trained model file.
+
         Parameters
         ----------
         if_exists : str
             Supported values:
                 - *ignore*: The model will not be downloaded
-                - *strict*: This is the defaul. The model will be downloaded only if it does not exist at the *cache_dir*.
-                - *overwrite*: The model will be downloaded even if it already exists at the *cache_dir*.
+                - *strict*: This is the defaul. The model will be downloaded
+                only if it does not exist at the *cache_dir*.
+                - *overwrite*: The model will be downloaded even if it already
+                exists at the *cache_dir*.
 
         Returns
         -------
@@ -220,10 +225,12 @@ class FasttextTransformer:
         self,
         overwrite: bool = False,
     ):
-        """
-        Download, if not exists, and load the pretrained FastText embedding model in the working directory.
-        Note that the default gzipped English Common Crawl FastText model has 4.2 GB
-        and its unzipped version has 6.7 GB.
+        """Download, if not exists, and load the pretrained FastText embedding
+        model in the working directory.
+
+        Note that the default gzipped English Common Crawl FastText model has
+        4.2 GB and its unzipped version has 6.7 GB.
+
         Parameters
         ----------
         overwrite : bool
@@ -240,8 +247,8 @@ class FasttextTransformer:
         return embedding_model
 
     def get_embedding_dimension(self) -> int:
-        """
-        Retrieve the embedding dimensions of the underlying model.
+        """Retrieve the embedding dimensions of the underlying model.
+
         Returns
         -------
         int
@@ -250,9 +257,10 @@ class FasttextTransformer:
         return self._embedding_model.get_dimension()
 
     def get_vector(self, word: str) -> np.ndarray:
-        """
-        Retrieve the embedding of the given word.
+        """Retrieve the embedding of the given word.
+
         If the word is out of vocabulary a zero vector is returned.
+
         Parameters
         ----------
         word : str
@@ -263,19 +271,19 @@ class FasttextTransformer:
         np.ndarray
             A vector of float numbers.
         """
-        # vector = self._embedding_model.get_word_vector(
-        #     str(word).strip().lower(), np.random.randn(self.get_embedding_dimension())
-        # )
+
         vector = self._embedding_model.get_word_vector(
             str(word).strip().lower()
         )
         return vector
 
     def get_tokens(self, input_values: Iterable[str]) -> Set[str]:
-        """
-        Extract the most representative tokens of each value and return the token set.
-        Here, the most representative tokens are the ones with the lowest TF/IDF scores -
-        tokens that describe what the values are about.
+        """Extract the most representative tokens of each value and return the
+        token set.
+
+        Here, the most representative tokens are the ones with the lowest
+        TF/IDF scores - tokens that describe what the values are about.
+
         Parameters
         ----------
         input_values : Iterable[str]
@@ -323,27 +331,30 @@ class FasttextTransformer:
         return tokenset
 
     def transform(self, input_values: Iterable[str]) -> np.ndarray:
-        """
-         Extract the embeddings of the most representative tokens of each value and return their **mean** embedding.
-         Here, the most representative tokens are the ones with the lowest TF/IDF scores -
-         tokens that describe what the values are about.
-         Given that the underlying embedding model is a n-gram based one,
-         the number of out-of-vocabulary tokens should be relatively small or zero.
-         Parameters
-         ----------
+        """Extract the embeddings of the most representative tokens of each
+        value and return their **mean** embedding.
+
+        Here, the most representative tokens are the ones with the lowest
+        TF/IDF scores - tokens that describe what the values are about. Given
+        that the underlying embedding model is a n-gram based one, the number
+        of out-of-vocabulary tokens should be relatively small or zero.
+
+        Parameters
+        ----------
         input_values : Iterable[str]
-             The collection of values to extract tokens from.
+            The collection of values to extract tokens from.
 
-         Returns
-         -------
-         np.ndarray
-             A Numpy vector representing the mean of all token embeddings.
+        Returns
+        -------
+        np.ndarray
+            A Numpy vector representing the mean of all token embeddings.
         """
 
-        # embeddings = [self.get_vector(token) for token in self.get_tokens(input_values)]
         tokenset = set()
+
         for value in input_values:
             value = value.lower().replace("\n", " ").strip()
+
             for shingle in shingles(value):
                 tokens = [t for t in re.split(r"\s+", shingle)]
 
@@ -353,19 +364,25 @@ class FasttextTransformer:
                 tokenset.update(tokens)
 
         embeddings = [self.get_vector(token) for token in tokenset]
+
         if len(embeddings) == 0:
             return np.empty(0)
+
         return np.mean(np.array(embeddings), axis=0)
 
 
-def compute_fasttext_signature(col_list, feature_extractor, num_val_samples: int):
+def compute_fasttext_signature(
+    col_list, feature_extractor, num_val_samples: int
+):
     # randomly pick a corresponding table column to compute value signature
     count = 0
 
     while count < VALUE_SIGNATURE_ATTEMPTS:
         rnd_idx = random.randrange(len(col_list))
         table_id, col_name = col_list[rnd_idx]
-        df = readCSVFileWithTableID(table_id, usecols=[col_name], nrows=num_val_samples).astype(str)
+        df = readCSVFileWithTableID(
+            table_id, usecols=[col_name], nrows=num_val_samples
+        ).astype(str)
 
         fasttext_signature = feature_extractor.transform(df[col_name].tolist())
         if len(fasttext_signature) != 0:
