@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/ssd/congtj/openforge/sotab_v2/artifact/mrf_benchmark",
+        default="/ssd/congtj/openforge/sotab_v2/artifact/sotab_v2_test_openforge_small",  # noqa: 501
         help="Path to the output directory.",
     )
 
@@ -157,18 +157,9 @@ if __name__ == "__main__":
     valid_df["relation_variable_name"] = valid_var_names
     test_df["relation_variable_name"] = test_var_names
 
-    prefix = args.source_data_filepath.split("/")[-1]
-    prefix = prefix.split("_")[:3]
-    assert prefix[-1] in ["training", "validation", "test"]
-    prefix = "_".join(prefix) + "_openforge_small"
-
-    train_output_filepath = os.path.join(
-        args.output_dir, f"{prefix}_training.csv"
-    )
-    valid_output_filepath = os.path.join(
-        args.output_dir, f"{prefix}_validation.csv"
-    )
-    test_output_filepath = os.path.join(args.output_dir, f"{prefix}_test.csv")
+    train_output_filepath = os.path.join(args.output_dir, "training.csv")
+    valid_output_filepath = os.path.join(args.output_dir, "validation.csv")
+    test_output_filepath = os.path.join(args.output_dir, "test.csv")
 
     train_df.to_csv(train_output_filepath, index=False)
     valid_df.to_csv(valid_output_filepath, index=False)
