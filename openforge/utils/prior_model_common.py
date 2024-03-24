@@ -43,9 +43,9 @@ def load_openforge_sotab_split(
     X = np.array(X)
     y = np.array(y)
 
-    logger.info(f"\nX shape: {X.shape}")
+    logger.info(f"X shape: {X.shape}")
     logger.info(f"y shape: {y.shape}")
-    logger.info(f"Number of positive instances: {np.sum(y == 1)}")
+    logger.info(f"Number of positive instances: {np.sum(y == 1)}\n")
 
     return X, y, df
 
@@ -118,4 +118,4 @@ def log_exp_metrics(
 
     logger.info(f"Split: {split}")
     logger.info(f"  Accuracy: {accuracy}")
-    logger.info(f"  F1 score: {f1}")
+    logger.info(f"  F1 score: {f1}\n")
