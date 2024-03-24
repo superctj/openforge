@@ -58,12 +58,16 @@ def split_on_uppercase(
     return parts
 
 
-def process_schemaorg_label(label: str) -> str:
+def process_label(label: str) -> str:
     processed_label = ""
     parts = label.split("/")
 
     for i, part in enumerate(parts):
         decomposed = split_on_uppercase(part)
+
+        # Remove suffix "at" that stands for addtional type in SOTAB benchmark
+        if decomposed[-1] == "at":
+            decomposed = decomposed[:-1]
 
         if i == 0:
             processed_label += " ".join(decomposed)
@@ -95,9 +99,7 @@ def get_value_signatures(
     return column_values, fasttext_signature
 
 
-def get_column_values(
-    table_path: str, column_index: int, sample_size: int, random_seed: int
-) -> list:
+def get_column_values(table_path: str, column_index: int) -> list:
     table = pd.read_json(table_path, compression="gzip", lines=True)
     table = table.astype(str)
 
@@ -122,18 +124,21 @@ def get_label_signatures(
     dbpedia_label_col_map: dict,
     qgram_transformer,
     fasttext_transformer,
+    logger,
 ):
     # Check if label comes from dbpedia
     if label.startswith("https"):
         tblname_colidx_pairs = dbpedia_label_col_map[label]
         table_dir = dbpedia_table_dir
 
-        label = label.split("/")[-1].lower()
+        label = process_label(label.split("/")[-1])
     else:
         tblname_colidx_pairs = schemaorg_label_col_map[label]
         table_dir = schemaorg_table_dir
 
-        label = process_schemaorg_label(label)
+        label = process_label(label)
+
+    logger.info(f"Processed label: {label}")
 
     name_qgram_signature = set(qgram_transformer.transform(label))
     name_fasttext_signature = fasttext_transformer.transform([label])
@@ -217,12 +222,14 @@ def find_equivalent_labels(
     return equivalent_entries
 
 
-def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
+def synthesize_sotab_v2_mrf_data(
+    equivalent_entries: list, args: argparse.Namespace, logger
+):
     schemaorg_table_dir = os.path.join(
-        args.source_data_dir, f"cta_schemaorg/{args.split}"
+        args.source_data_dir, f"cta_{args.split}_schemaorg/{args.split}"
     )
     dbpedia_table_dir = os.path.join(
-        args.source_data_dir, f"cta_dbpedia/{args.split}"
+        args.source_data_dir, f"cta_{args.split}_dbpedia/{args.split}"
     )
 
     all_labels = []
@@ -263,6 +270,8 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
         [
             ("label_1", str),
             ("label_2", str),
+            ("label_1_processed", str),
+            ("label_2_processed", str),
             ("name_qgram_similarity", float),
             ("name_jaccard_similarity", float),
             ("name_edit_distance", int),
@@ -296,14 +305,18 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
             dbpedia_label_col_map,
             qgram_transformer,
             fasttext_transformer,
+            logger,
         )
 
-        if (
-            len(label_i_name_fasttext_signature)
-            or len(label_i_value_fasttext_signature) == 0
-        ):
+        if len(label_i_name_fasttext_signature) == 0:
             logger.info(
-                f"Cannot compute fasttext signature for label: {label_i}."
+                f"Cannot compute name fasttext signature for label: {label_i}."
+            )
+            continue
+
+        if len(label_i_value_fasttext_signature) == 0:
+            logger.info(
+                f"Cannot compute value fasttext signature for label: {label_i}."
             )
             continue
 
@@ -325,15 +338,15 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
                 dbpedia_label_col_map,
                 qgram_transformer,
                 fasttext_transformer,
+                logger,
             )
 
-            if (
-                len(label_j_name_fasttext_signature)
-                or len(label_j_value_fasttext_signature) == 0
-            ):
-                logger.info(
-                    f"Cannot compute fasttext signature for label: {label_j}."
-                )
+            if len(label_j_name_fasttext_signature) == 0:
+                logger.info("Cannot compute name fasttext signature.")
+                continue
+
+            if len(label_j_value_fasttext_signature) == 0:
+                logger.info("Cannot compute value fasttext signature.")
                 continue
 
             name_qgram_sim = jaccard_index(
@@ -373,6 +386,8 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
                 MRFEntry(
                     label_i,
                     label_j,
+                    label_i_name,
+                    label_j_name,
                     name_qgram_sim,
                     name_jaccard_sim,
                     name_edit_dist,
@@ -404,7 +419,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--split", type=str, default="test", help="Split of source data."
+        "--split", type=str, default="training", help="Split of source data."
     )
 
     parser.add_argument(
