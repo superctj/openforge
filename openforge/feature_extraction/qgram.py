@@ -10,8 +10,8 @@ from typing import List, Optional
 
 class QGramTransformer:
     def __init__(self, qgram_size: Optional[int] = None):
-        """
-        This object performs qgram extraction.
+        """This object performs qgram extraction.
+
         Parameters
         ----------
         qgram_size : Optional[int]
@@ -26,21 +26,22 @@ class QGramTransformer:
     def transform(
         self, input_string: str, qgram_size: Optional[int] = None
     ) -> List[str]:
-        """
-        Generate a collection of qgrams of configured size from the given string.
+        """Generate a collection of qgrams of configured size from the given
+        string.
+
         Parameters
         ----------
         input_string : str
             The input string to transform.
         qgram_size : Optional[int]
             The size of each qgram.
-            If None, the upper-level size (passed when the object was created) will be used.
+            If None, the upper-level size (passed when the object was created)
+            will be used.
 
         Returns
         -------
         List[str]
             A collection of qgrams of the given string.
-
         """
 
         if qgram_size is None and self._qgram_size is None:
