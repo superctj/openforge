@@ -10,21 +10,26 @@ from openforge.feature_extraction.fb_fasttext import FasttextTransformer
 from openforge.feature_extraction.qgram import QGramTransformer
 from openforge.feature_extraction.similarity_metrics import (
     cosine_similarity,
+    edit_distance,
     jaccard_index,
 )
 from openforge.utils.custom_logging import create_custom_logger
 
 
+VALUE_SIGNATURE_ATTEMPTS = 100
+
+
 def split_on_uppercase(
     s: str, lower: bool = True, keep_contiguous: bool = True
-):
+) -> list[str]:
     """
     Args:
-        s (str): string
-        keep_contiguous (bool): flag to indicate we want to
-                                keep contiguous uppercase chars together
+        s: string
+        keep_contiguous: flag to indicate we want to keep contiguous uppercase
+            chars together
 
     Returns:
+        List of substrings split on uppercase.
     """
 
     string_length = len(s)
@@ -68,25 +73,48 @@ def process_schemaorg_label(label: str) -> str:
     return processed_label
 
 
+def get_value_signatures(
+    tblname_colidx_pairs: list[tuple], table_dir: str, fasttext_model
+):
+    # randomly pick a corresponding table column to compute value signatures
+    count = 0
+
+    while count < VALUE_SIGNATURE_ATTEMPTS:
+        rnd_idx = random.randrange(len(tblname_colidx_pairs))
+        table_name, col_idx = tblname_colidx_pairs[rnd_idx]
+
+        table_path = os.path.join(table_dir, table_name)
+        column_values = get_column_values(table_path, col_idx)
+        fasttext_signature = fasttext_model.transform(column_values)
+
+        if len(fasttext_signature) != 0:
+            break
+        else:
+            count += 1
+
+    return column_values, fasttext_signature
+
+
 def get_column_values(
     table_path: str, column_index: int, sample_size: int, random_seed: int
 ) -> list:
     table = pd.read_json(table_path, compression="gzip", lines=True)
     table = table.astype(str)
 
-    if table.shape[0] <= sample_size:
-        column_values = table.iloc[:, column_index].tolist()
-    else:
-        column_values = (
-            table.iloc[:, column_index]
-            .sample(n=sample_size, random_state=random_seed)
-            .tolist()
-        )
+    # if table.shape[0] <= sample_size:
+    #     column_values = table.iloc[:, column_index].tolist()
+    # else:
+    #     column_values = (
+    #         table.iloc[:, column_index]
+    #         .sample(n=sample_size, random_state=random_seed)
+    #         .tolist()
+    #     )
+    column_values = table.iloc[:, column_index].tolist()
 
     return column_values
 
 
-def compute_label_signatures(
+def get_label_signatures(
     label: str,
     schemaorg_table_dir: str,
     dbpedia_table_dir: str,
@@ -94,39 +122,45 @@ def compute_label_signatures(
     dbpedia_label_col_map: dict,
     qgram_transformer,
     fasttext_transformer,
-    args,
 ):
     # Check if label comes from dbpedia
     if label.startswith("https"):
-        table_name, column_index = dbpedia_label_col_map[label]
-        table_path = os.path.join(dbpedia_table_dir, table_name)
+        tblname_colidx_pairs = dbpedia_label_col_map[label]
+        table_dir = dbpedia_table_dir
 
         label = label.split("/")[-1].lower()
     else:
-        table_name, column_index = schemaorg_label_col_map[label]
-        table_path = os.path.join(schemaorg_table_dir, table_name)
+        tblname_colidx_pairs = schemaorg_label_col_map[label]
+        table_dir = schemaorg_table_dir
 
         label = process_schemaorg_label(label)
 
-    name_signature = set(qgram_transformer.transform(label))
+    name_qgram_signature = set(qgram_transformer.transform(label))
+    name_fasttext_signature = fasttext_transformer.transform([label])
 
-    column_values = get_column_values(
-        table_path, column_index, args.value_sample_size, args.random_seed
+    col_values, value_fasttext_signature = get_value_signatures(
+        tblname_colidx_pairs, table_dir, fasttext_transformer
     )
 
-    fasttext_signature = fasttext_transformer.transform(column_values)
-    if len(fasttext_signature) == 0:
-        fasttext_signature = []
+    return (
+        label,
+        col_values,
+        name_qgram_signature,
+        name_fasttext_signature,
+        value_fasttext_signature,
+    )
 
-    return name_signature, fasttext_signature
 
-
-def find_equivalent_labels(source_data_dir: str, logger) -> list:
+def find_equivalent_labels(
+    source_data_dir: str, dataset_split: str, logger
+) -> list:
     schemaorg_metadata_filepath = os.path.join(
-        source_data_dir, "cta_schemaorg/sotab_v2_cta_test_set.csv"
+        source_data_dir,
+        f"cta_{dataset_split}_schemaorg/sotab_v2_cta_{dataset_split}_set.csv",
     )
     dbpedia_metadata_filepath = os.path.join(
-        source_data_dir, "cta_dbpedia/sotab_cta_test_dbpedia.csv"
+        source_data_dir,
+        f"cta_{dataset_split}_dbpedia/sotab_cta_{dataset_split}_dbpedia.csv",
     )
 
     schemaorg_df = pd.read_csv(schemaorg_metadata_filepath)
@@ -141,8 +175,8 @@ def find_equivalent_labels(source_data_dir: str, logger) -> list:
             ("dbpedia_label", str),
         ],
     )
-    equivalent_entries = []
 
+    equivalent_entries = []
     schemaorg_cols = set()
     schemaorg_col_label_mapping = {}
     dbpedia_labels = set()
@@ -199,16 +233,22 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
     for entry in equivalent_entries:
         if entry.schemaorg_label not in all_labels:
             all_labels.append(entry.schemaorg_label)
-            schemaorg_label_col_map[entry.schemaorg_label] = (
-                entry.table_name,
-                entry.column_index,
+            schemaorg_label_col_map[entry.schemaorg_label] = [
+                (entry.table_name, entry.column_index)
+            ]
+        else:
+            schemaorg_label_col_map[entry.schemaorg_label].append(
+                (entry.table_name, entry.column_index)
             )
 
         if entry.dbpedia_label not in all_labels:
             all_labels.append(entry.dbpedia_label)
-            dbpedia_label_col_map[entry.dbpedia_label] = (
-                entry.table_name,
-                entry.column_index,
+            dbpedia_label_col_map[entry.dbpedia_label] = [
+                (entry.table_name, entry.column_index)
+            ]
+        else:
+            dbpedia_label_col_map[entry.dbpedia_label].append(
+                (entry.table_name, entry.column_index)
             )
 
         equivalent_pairs.add((entry.schemaorg_label, entry.dbpedia_label))
@@ -218,17 +258,19 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
         cache_dir=args.fasttext_model_dir
     )
 
-    csv_output_filepath = os.path.join(
-        args.output_dir, "sotab_v2_test_mrf_data.csv"
-    )
-
     MRFEntry = make_dataclass(
         "MRFEntry",
         [
             ("label_1", str),
             ("label_2", str),
-            ("name_similarity", float),
-            ("value_similarity", float),
+            ("name_qgram_similarity", float),
+            ("name_jaccard_similarity", float),
+            ("name_edit_distance", int),
+            ("name_fasttext_similarity", float),
+            ("name_word_count_ratio", float),
+            ("name_char_count_ratio", float),
+            ("value_jaccard_similarity", float),
+            ("value_fasttext_similarity", float),
             ("relation_variable_name", str),
             ("relation_variable_label", int),
         ],
@@ -240,20 +282,26 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
         logger.info("\n" + "=" * 50)
         logger.info(f"Concept {i+1}: {label_i}")
 
-        label_i_name_signature, label_i_fasttext_signature = (
-            compute_label_signatures(
-                label_i,
-                schemaorg_table_dir,
-                dbpedia_table_dir,
-                schemaorg_label_col_map,
-                dbpedia_label_col_map,
-                qgram_transformer,
-                fasttext_transformer,
-                args,
-            )
+        (
+            label_i_name,
+            label_i_col_values,
+            label_i_name_qgram_signature,
+            label_i_name_fasttext_signature,
+            label_i_value_fasttext_signature,
+        ) = get_label_signatures(
+            label_i,
+            schemaorg_table_dir,
+            dbpedia_table_dir,
+            schemaorg_label_col_map,
+            dbpedia_label_col_map,
+            qgram_transformer,
+            fasttext_transformer,
         )
 
-        if len(label_i_fasttext_signature) == 0:
+        if (
+            len(label_i_name_fasttext_signature)
+            or len(label_i_value_fasttext_signature) == 0
+        ):
             logger.info(
                 f"Cannot compute fasttext signature for label: {label_i}."
             )
@@ -263,32 +311,55 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
             label_j = all_labels[j]
             logger.info(f"Concept {j+1}: {label_j}")
 
-            label_j_name_signature, label_j_fasttext_signature = (
-                compute_label_signatures(
-                    label_j,
-                    schemaorg_table_dir,
-                    dbpedia_table_dir,
-                    schemaorg_label_col_map,
-                    dbpedia_label_col_map,
-                    qgram_transformer,
-                    fasttext_transformer,
-                    args,
-                )
+            (
+                label_j_name,
+                label_j_col_values,
+                label_j_name_qgram_signature,
+                label_j_name_fasttext_signature,
+                label_j_value_fasttext_signature,
+            ) = get_label_signatures(
+                label_j,
+                schemaorg_table_dir,
+                dbpedia_table_dir,
+                schemaorg_label_col_map,
+                dbpedia_label_col_map,
+                qgram_transformer,
+                fasttext_transformer,
             )
 
-            if len(label_j_fasttext_signature) == 0:
+            if (
+                len(label_j_name_fasttext_signature)
+                or len(label_j_value_fasttext_signature) == 0
+            ):
                 logger.info(
                     f"Cannot compute fasttext signature for label: {label_j}."
                 )
                 continue
 
-            name_sim = jaccard_index(
-                label_i_name_signature, label_j_name_signature
+            name_qgram_sim = jaccard_index(
+                label_i_name_qgram_signature, label_j_name_qgram_signature
+            )
+            name_jaccard_sim = jaccard_index(
+                set(label_i_name.split()), set(label_j_name.split())
+            )
+            name_edit_dist = edit_distance(label_i_name, label_j_name)
+            name_fasttext_sim = cosine_similarity(
+                label_i_name_fasttext_signature, label_j_name_fasttext_signature
+            )
+            name_word_count_ratio = len(label_i_name.split()) / len(
+                label_j_name.split()
+            )
+            name_char_count_ratio = len(label_i_name) / len(label_j_name)
+
+            value_jaccard_sim = jaccard_index(
+                set(label_i_col_values), set(label_j_col_values)
+            )
+            value_fasttext_sim = cosine_similarity(
+                label_i_value_fasttext_signature,
+                label_j_value_fasttext_signature,
             )
 
-            fasttext_sim = cosine_similarity(
-                label_i_fasttext_signature, label_j_fasttext_signature
-            )
+            relation_variable_name = f"R_{i+1}-{j+1}"
 
             if (label_i, label_j) in equivalent_pairs or (
                 label_j,
@@ -298,18 +369,26 @@ def synthesize_sotab_v2_mrf_data(equivalent_entries: list, args, logger):
             else:
                 relation_variable_label = 0
 
-            relation_variable_name = f"R_{i+1}-{j+1}"
             mrf_data.append(
                 MRFEntry(
                     label_i,
                     label_j,
-                    name_sim,
-                    fasttext_sim,
+                    name_qgram_sim,
+                    name_jaccard_sim,
+                    name_edit_dist,
+                    name_fasttext_sim,
+                    name_word_count_ratio,
+                    name_char_count_ratio,
+                    value_jaccard_sim,
+                    value_fasttext_sim,
                     relation_variable_name,
                     relation_variable_label,
                 )
             )
 
+    csv_output_filepath = os.path.join(
+        args.output_dir, f"sotab_v2_{args.split}_mrf_data.csv"
+    )
     mrf_df = pd.DataFrame(mrf_data)
     mrf_df.to_csv(csv_output_filepath, index=False)
 
@@ -325,7 +404,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--split", type=str, default="Test", help="Split of source data."
+        "--split", type=str, default="test", help="Split of source data."
     )
 
     parser.add_argument(
@@ -335,12 +414,12 @@ if __name__ == "__main__":
         help="Directory containing fasttext model weights.",
     )
 
-    parser.add_argument(
-        "--value_sample_size",
-        type=int,
-        default=10,
-        help="Number of sample values per column for feature extraction.",
-    )
+    # parser.add_argument(
+    #     "--value_sample_size",
+    #     type=int,
+    #     default=10,
+    #     help="Number of sample values per column for feature extraction.",
+    # )
 
     parser.add_argument(
         "--random_seed",
@@ -359,7 +438,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/sotab_mrf_synthesized_data",
+        default="/home/congtj/openforge/logs/sotab_v2",
         help="Directory to store logs.",
     )
 
@@ -377,5 +456,7 @@ if __name__ == "__main__":
     logger = create_custom_logger(args.log_dir)
     logger.info(args)
 
-    equivalent_entries = find_equivalent_labels(args.source_data_dir, logger)
+    equivalent_entries = find_equivalent_labels(
+        args.source_data_dir, args.split, logger
+    )
     synthesize_sotab_v2_mrf_data(equivalent_entries, args, logger)
