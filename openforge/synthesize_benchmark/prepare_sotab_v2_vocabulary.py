@@ -402,7 +402,7 @@ def synthesize_sotab_v2_mrf_data(
             )
 
     csv_output_filepath = os.path.join(
-        args.output_dir, f"sotab_v2_{args.split}_mrf_data.csv"
+        args.output_dir, f"sotab_v2_{args.split}_vocabulary.csv"
     )
     mrf_df = pd.DataFrame(mrf_data)
     mrf_df.to_csv(csv_output_filepath, index=False)
