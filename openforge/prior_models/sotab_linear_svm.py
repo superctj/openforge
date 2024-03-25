@@ -17,7 +17,7 @@ from openforge.utils.util import fix_global_random_state, parse_config
 
 
 class LinearSVMTuningWrapper:
-    def __init__(self, data_dir: str, random_seed: int, logger: logging.logger):
+    def __init__(self, data_dir: str, random_seed: int, logger: logging.Logger):
         (
             self.X_train,
             self.y_train,
