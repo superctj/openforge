@@ -8,11 +8,18 @@ from smac import Scenario
 
 
 def get_bo_optimizer(
-    exp_config: ConfigParser, mrf_hp_space: ConfigurationSpace, target_function
+    exp_config: ConfigParser,
+    hp_space: ConfigurationSpace,
+    target_function: object,
 ):
+    try:
+        output_dir = exp_config.get("results", "log_dir")
+    except KeyError:
+        output_dir = exp_config.get("results", "output_dir")
+
     scenario = Scenario(
-        configspace=mrf_hp_space,
-        output_directory=exp_config["results"]["log_dir"],
+        configspace=hp_space,
+        output_directory=output_dir,
         deterministic=True,
         objectives="cost",  # minimize the objective
         n_trials=exp_config.getint("hp_optimization", "n_trials"),
