@@ -102,6 +102,26 @@ def load_openforge_sotab_small(data_dir: str, logger: logging.Logger) -> tuple[
     )
 
 
+def evaluate_prior_model_predictions(
+    y: np.ndarray, y_pred: np.ndarray
+) -> tuple[float, float]:
+    """Evaluate predictions of a prior model.
+
+    Args:
+        y: The true labels.
+        y_pred: The predicted labels.
+
+    Returns:
+        f1: The F1 score.
+        accuracy: The accuracy.
+    """
+
+    f1 = f1_score(y, y_pred)
+    accuracy = accuracy_score(y, y_pred)
+
+    return f1, accuracy
+
+
 def log_exp_metrics(
     split: str, y: np.ndarray, y_pred: np.ndarray, logger: logging.Logger
 ):
@@ -113,8 +133,7 @@ def log_exp_metrics(
         logger: The logging instance.
     """
 
-    accuracy = accuracy_score(y, y_pred)
-    f1 = f1_score(y, y_pred)
+    f1, accuracy = evaluate_prior_model_predictions(y, y_pred)
 
     logger.info(f"Split: {split}")
     logger.info(f"  Accuracy: {accuracy}")
