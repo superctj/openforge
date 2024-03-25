@@ -1,4 +1,4 @@
-from configparser import ConfigParser
+from configparser import ConfigParser, NoOptionError
 from functools import partial
 
 from ConfigSpace import ConfigurationSpace
@@ -14,7 +14,7 @@ def get_bo_optimizer(
 ):
     try:
         output_dir = exp_config.get("results", "log_dir")
-    except KeyError:
+    except NoOptionError:
         output_dir = exp_config.get("results", "output_dir")
 
     scenario = Scenario(
