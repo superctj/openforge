@@ -1,0 +1,10 @@
+[
+    {
+        "name": "C",
+        "short_descr": "Regularization parameter.",
+        "type": "float",
+        "min_val": 1e-3,
+        "max_val": 1e3,
+        "default": 1.0
+    }
+]
