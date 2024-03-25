@@ -5,7 +5,7 @@ import ConfigSpace.hyperparameters as CSH
 from ConfigSpace import ConfigurationSpace
 
 
-class MRFHyperparameterSpace:
+class HyperparameterSpace:
     def __init__(self, hp_spec_filepath: str, random_seed: int):
         self.random_seed = random_seed
         self.hp_spec = self.read_hp_spec(hp_spec_filepath)
@@ -28,7 +28,7 @@ class MRFHyperparameterSpace:
 
     def create_hp_space(self) -> ConfigurationSpace:
         """
-        Create hyperparameter space for the MRF model.
+        Create hyperparameter space.
 
         Returns:
             hp_space (ConfigurationSpace): ConfigurationSpace object.
