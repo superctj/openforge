@@ -1,9 +1,14 @@
+from configparser import ConfigParser
+
 from ConfigSpace import ConfigurationSpace
 
 from openforge.hp_optimization.bo_optimizer import get_bo_optimizer
 from openforge.utils.custom_logging import get_logger
 from openforge.utils.exp_tracker import ExperimentState
 from openforge.utils.mrf_common import evaluate_inference_results
+from openforge.utils.prior_model_common import (
+    evaluate_prior_model_predictions,
+)
 
 
 class TuningEngine:
@@ -44,21 +49,52 @@ class TuningEngine:
     def run(self):
         best_hp_config = self.optimizer.optimize()
 
-        self.logger.info("\nCompleted hyperparamter optimization.")
+        self.exp_state.log_best_hp_config(best_hp_config, self.logger)
 
-        self.logger.info(f"\nBest MRF hyperparameters:\n{best_hp_config}")
-        self.logger.info(f"Best F1 score: {self.exp_state.best_f1_score:.2f}")
-        self.logger.info(
-            f"Accuracy: {self.exp_state.best_associated_accuracy:.2f}"
+        return best_hp_config
+
+
+class PriorModelTuningEngine:
+    def __init__(
+        self,
+        exp_config: ConfigParser,
+        prior_model_wrapper: object,
+        hp_space: ConfigurationSpace,
+    ):
+        self.exp_config = exp_config
+        self.prior_model_wrapper = prior_model_wrapper
+        self.hp_space = hp_space
+
+        self.optimizer = get_bo_optimizer(
+            self.exp_config, self.hp_space, self.bo_target_function
+        )
+        self.logger = get_logger()
+
+    def bo_target_function(self, hp_config: ConfigurationSpace, seed: int):
+        """Target function for Bayesian Optimization."""
+
+        clf = self.prior_model_wrapper.create_model(dict(hp_config))
+        y_valid_pred = self.prior_model_wrapper.run_inference(clf)
+
+        f1_score, accuracy = evaluate_prior_model_predictions(
+            self.prior_model_wrapper.y_valid, y_valid_pred
         )
 
-        self.logger.info(
-            f"\nWorst MRF hyperparameters:\n{self.exp_state.worst_hp_config}"
-        )
-        self.logger.info(f"Worst F1 score: {self.exp_state.worst_f1_score:.2f}")
-        self.logger.info(
-            f"Accuracy: {self.exp_state.worst_associated_accuracy:.2f}"
-        )
+        if self.exp_state.best_f1_score < f1_score:
+            self.exp_state.best_f1_score = f1_score
+            self.exp_state.best_associated_accuracy = accuracy
+            self.exp_state.best_hp_config = hp_config
 
-        assert dict(best_hp_config) == dict(self.exp_state.best_hp_config)
+        if self.exp_state.worst_f1_score > f1_score:
+            self.exp_state.worst_f1_score = f1_score
+            self.exp_state.worst_associated_accuracy = accuracy
+            self.exp_state.worst_hp_config = hp_config
+
+        return -f1_score
+
+    def run(self):
+        best_hp_config = self.optimizer.optimize()
+
+        self.exp_state.log_best_hp_config(best_hp_config, self.logger)
+
         return best_hp_config
