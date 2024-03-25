@@ -136,5 +136,5 @@ def log_exp_metrics(
     f1, accuracy = evaluate_prior_model_predictions(y, y_pred)
 
     logger.info(f"Split: {split}")
-    logger.info(f"  Accuracy: {accuracy}")
-    logger.info(f"  F1 score: {f1}\n")
+    logger.info(f"  Accuracy: {accuracy:.2f}")
+    logger.info(f"  F1 score: {f1:.2f}\n")
