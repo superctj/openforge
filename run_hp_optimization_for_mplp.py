@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from openforge.hp_optimization.hp_space import MRFHyperparameterSpace
+from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import TuningEngine
 from openforge.inference.pgmpy_mrf import MRFWrapper
 from openforge.utils.custom_logging import create_custom_logger
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     fix_global_random_state(config.getint("hp_optimization", "random_seed"))
 
     # Create MRF hyperparameter space
-    hp_space = MRFHyperparameterSpace(
+    hp_space = HyperparameterSpace(
         config.get("hp_optimization", "hp_spec_filepath"),
         config.getint("hp_optimization", "random_seed"),
     ).create_hp_space()
