@@ -1,3 +1,5 @@
+import argparse
+import os
 import time
 
 from itertools import combinations
@@ -7,7 +9,12 @@ import pandas as pd
 
 from pgmax import fgraph, fgroup, infer, vgroup
 
-from openforge.utils.custom_logging import get_logger
+from openforge.hp_optimization.hp_space import HyperparameterSpace
+from openforge.hp_optimization.tuning import TuningEngine
+from openforge.utils.custom_logging import create_custom_logger, get_logger
+from openforge.utils.mrf_common import evaluate_inference_results
+from openforge.utils.util import fix_global_random_state, parse_config
+
 
 UNARY_FACTOR_CONFIG = np.array([[0], [1]])
 TERNARY_FACTOR_CONFIG = np.array(
@@ -147,3 +154,71 @@ class MRFWrapper:
         self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
 
         return results
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--config_path",
+        type=str,
+        required=True,
+        help="Path to the experiment configuration file.",
+    )
+
+    args = parser.parse_args()
+
+    # Parse experiment configuration
+    config = parse_config(args.config_path)
+
+    # Set global random state
+    fix_global_random_state(config.getint("hp_optimization", "random_seed"))
+
+    # Create MRF hyperparameter space
+    hp_space = HyperparameterSpace(
+        config.get("hp_optimization", "hp_spec_filepath"),
+        config.getint("hp_optimization", "random_seed"),
+    ).create_hp_space()
+
+    # Create logger
+    output_dir = config.get("results", "output_dir")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    logger = create_custom_logger(output_dir)
+    printable_config = {section: dict(config[section]) for section in config}
+    logger.info(f"Experiment configuration:\n{printable_config}\n")
+
+    # Create MRF wrapper
+    if config.getboolean("mrf_lbp", "tune_lbp_hp"):
+        mrf_wrapper = MRFWrapper(
+            config.get("mrf_lbp", "validation_filepath"),
+            tune_lbp_hp=True,
+        )
+    else:
+        mrf_wrapper = MRFWrapper(
+            config.get("mrf_lbp", "validation_filepath"),
+            tune_lbp_hp=False,
+            num_iters=config.getint("mrf_lbp", "num_iters"),
+            damping=config.getfloat("mrf_lbp", "damping"),
+            temperature=config.getfloat("mrf_lbp", "temperature"),
+        )
+
+    # Hyperparameter tuning
+    tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
+    best_hp_config = tuning_engine.run()
+
+    test_mrf_wrapper = MRFWrapper(
+        config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=True
+    )
+
+    test_mrf = test_mrf_wrapper.create_mrf(dict(best_hp_config))
+    results = test_mrf_wrapper.run_inference(test_mrf, dict(best_hp_config))
+
+    f1_score, accuracy = evaluate_inference_results(
+        test_mrf_wrapper.prior_data, results
+    )
+
+    logger.info("Split: test")
+    logger.info(f"  F1 score: {f1_score:.2f}")
+    logger.info(f"  Accuracy: {accuracy:.2f}")
