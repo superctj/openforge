@@ -35,11 +35,11 @@ if __name__ == "__main__":
     ).create_hp_space()
 
     # Create logger
-    log_dir = config.get("results", "log_dir")
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    output_dir = config.get("results", "output_dir")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    logger = create_custom_logger(log_dir)
+    logger = create_custom_logger(output_dir)
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
