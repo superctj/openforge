@@ -68,6 +68,7 @@ class PriorModelTuningEngine:
         self.optimizer = get_bo_optimizer(
             self.exp_config, self.hp_space, self.bo_target_function
         )
+        self.exp_state = ExperimentState()
         self.logger = get_logger()
 
     def bo_target_function(self, hp_config: ConfigurationSpace, seed: int):
