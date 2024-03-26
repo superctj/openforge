@@ -82,8 +82,8 @@ class MRFWrapper:
             var = variables.__getitem__(var_name)
             variables_for_unary_factors.append([var])
 
-            confdc_score = row.positive_label_confidence_score
-            prior = np.log(np.array([1 - confdc_score, confdc_score]))
+            pred_proba = row.positive_label_prediction_probability
+            prior = np.log(np.array([1 - pred_proba, pred_proba]))
             log_potentials.append(prior)
 
         unary_factor_group = fgroup.EnumFactorGroup(
@@ -215,10 +215,6 @@ if __name__ == "__main__":
     test_mrf = test_mrf_wrapper.create_mrf(dict(best_hp_config))
     results = test_mrf_wrapper.run_inference(test_mrf, dict(best_hp_config))
 
-    f1_score, accuracy = evaluate_inference_results(
-        test_mrf_wrapper.prior_data, results
+    evaluate_inference_results(
+        test_mrf_wrapper.prior_data, results, log_predictions=True
     )
-
-    logger.info("Split: test")
-    logger.info(f"  F1 score: {f1_score:.2f}")
-    logger.info(f"  Accuracy: {accuracy:.2f}")
