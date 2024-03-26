@@ -74,8 +74,12 @@ class PriorModelTuningEngine:
     def bo_target_function(self, hp_config: ConfigurationSpace, seed: int):
         """Target function for Bayesian Optimization."""
 
-        clf = self.prior_model_wrapper.create_model(dict(hp_config))
-        y_valid_pred = self.prior_model_wrapper.run_inference(clf)
+        self.prior_model_wrapper.create_model(dict(hp_config))
+        self.prior_model_wrapper.fit()
+
+        y_valid_pred = self.prior_model_wrapper.predict(
+            self.prior_model_wrapper.X_valid
+        )
 
         f1_score, accuracy = evaluate_prior_model_predictions(
             self.prior_model_wrapper.y_valid, y_valid_pred
