@@ -2,8 +2,6 @@ import argparse
 import logging
 import os
 import pickle
-import random
-import shutil
 
 import numpy as np
 
@@ -124,6 +122,7 @@ if __name__ == "__main__":
 
         # Train a model with the best hyperparameter configuration
         prior_model_wrapper.create_model(dict(best_hp_config))
+        prior_model_wrapper.fit()
 
         # Save model
         model_save_filepath = os.path.join(output_dir, "linear_svm.pkl")
