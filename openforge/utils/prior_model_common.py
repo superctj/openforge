@@ -138,3 +138,31 @@ def log_exp_metrics(
     logger.info(f"Split: {split}")
     logger.info(f"  Accuracy: {accuracy:.2f}")
     logger.info(f"  F1 score: {f1:.2f}\n")
+
+
+def log_exp_records(
+    y: np.ndarray,
+    y_pred: np.ndarray,
+    y_proba: np.ndarray,
+    split: str,
+    logger: logging.Logger,
+    num_records: int = 5,
+):
+    """Log experiment records.
+
+    Args:
+        y: The true labels.
+        y_pred: The predicted labels.
+        y_proba: The predicted probabilities.
+        split: The dataset split.
+        logger: The logging instance.
+        num_records: The number of records to log.
+    """
+
+    logger.info(f"Split: {split}")
+    logger.info(f"First {num_records} labels: {y[:num_records]}")
+    logger.info(f"First {num_records} predictions: {y_pred[:num_records]}")
+    logger.info(
+        f"First {num_records} prediction probabilities:\n"
+        f"{y_proba[:num_records]}"
+    )
