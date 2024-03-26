@@ -19,18 +19,20 @@ class ExperimentState:
     def log_best_hp_config(
         self, best_hp_config: ConfigurationSpace, logger: logging.Logger
     ):
-        logger.info("\nCompleted hyperparamter optimization.")
+        logger.info("\nCompleted hyperparamter optimization.\n")
 
-        logger.info(f"\nBest hyperparameter configuration:\n{best_hp_config}")
+        logger.info(f"Best hyperparameter configuration:\n{best_hp_config}")
         logger.info(f"Best F1 score: {self.best_f1_score:.2f}")
-        logger.info(f"Associated accuracy: {self.best_associated_accuracy:.2f}")
+        logger.info(
+            f"Associated accuracy: {self.best_associated_accuracy:.2f}\n"
+        )
 
         logger.info(
-            f"\nWorst hyperparameter configuration:\n{self.worst_hp_config}"
+            f"Worst hyperparameter configuration:\n{self.worst_hp_config}"
         )
         logger.info(f"Worst F1 score: {self.worst_f1_score:.2f}")
         logger.info(
-            f"Associated accuracy: {self.worst_associated_accuracy:.2f}"
+            f"Associated accuracy: {self.worst_associated_accuracy:.2f}\n"
         )
 
         assert dict(best_hp_config) == dict(self.best_hp_config)
