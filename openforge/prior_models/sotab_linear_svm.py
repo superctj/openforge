@@ -179,25 +179,28 @@ if __name__ == "__main__":
         with open(model_save_filepath, "rb") as f:
             prior_model_wrapper.clf = pickle.load(f)
 
-    X_train = prior_model_wrapper.X_train
-    y_train = prior_model_wrapper.y_train
-    X_valid = prior_model_wrapper.X_valid
-    y_valid = prior_model_wrapper.y_valid
-    X_test = prior_model_wrapper.X_test
-    y_test = prior_model_wrapper.y_test
+    if args.mode != "train_w_hp_tuning":
+        X_train = prior_model_wrapper.X_train
+        y_train = prior_model_wrapper.y_train
+        X_valid = prior_model_wrapper.X_valid
+        y_valid = prior_model_wrapper.y_valid
+        X_test = prior_model_wrapper.X_test
+        y_test = prior_model_wrapper.y_test
 
-    y_train_pred = prior_model_wrapper.predict(X_train)
-    log_exp_metrics("training", y_train, y_train_pred, logger)
+        y_train_pred = prior_model_wrapper.predict(X_train)
+        log_exp_metrics("training", y_train, y_train_pred, logger)
 
-    y_valid_pred = prior_model_wrapper.predict(X_valid)
-    log_exp_metrics("validation", y_valid, y_valid_pred, logger)
+        y_valid_pred = prior_model_wrapper.predict(X_valid)
+        log_exp_metrics("validation", y_valid, y_valid_pred, logger)
 
-    y_test_pred = prior_model_wrapper.predict(X_test)
-    log_exp_metrics("test", y_test, y_test_pred, logger)
+        y_test_pred = prior_model_wrapper.predict(X_test)
+        log_exp_metrics("test", y_test, y_test_pred, logger)
 
-    # Inspect prediction probabilities
-    y_valid_proba = prior_model_wrapper.predict_proba(X_valid)
-    log_exp_records(y_valid, y_valid_pred, y_valid_proba, "validation", logger)
+        # Inspect prediction probabilities
+        y_valid_proba = prior_model_wrapper.predict_proba(X_valid)
+        log_exp_records(
+            y_valid, y_valid_pred, y_valid_proba, "validation", logger
+        )
 
-    y_test_proba = prior_model_wrapper.predict_proba(X_test)
-    log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
+        y_test_proba = prior_model_wrapper.predict_proba(X_test)
+        log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
