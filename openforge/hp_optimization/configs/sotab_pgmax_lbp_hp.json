@@ -21,7 +21,7 @@
         "type": "float",
         "min_val": 0,
         "max_val": 1,
-        "default_val": 0.5
+        "default_val": 0
     },
     {
         "name": "num_iters",
