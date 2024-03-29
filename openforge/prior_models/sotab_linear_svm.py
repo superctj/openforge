@@ -128,79 +128,55 @@ if __name__ == "__main__":
         model_save_filepath = os.path.join(output_dir, "linear_svm.pkl")
         with open(model_save_filepath, "wb") as f:
             pickle.dump(prior_model_wrapper.clf, f)
-
-        X_train = prior_model_wrapper.X_train
-        y_train = prior_model_wrapper.y_train
-        X_valid = prior_model_wrapper.X_valid
-        y_valid = prior_model_wrapper.y_valid
-        X_test = prior_model_wrapper.X_test
-        y_test = prior_model_wrapper.y_test
-        valid_df = prior_model_wrapper.valid_df
-        test_df = prior_model_wrapper.test_df
-
-        y_train_pred = prior_model_wrapper.predict(X_train)
-        log_exp_metrics("training", y_train, y_train_pred, logger)
-
-        y_valid_pred = prior_model_wrapper.predict(X_valid)
-        log_exp_metrics("validation", y_valid, y_valid_pred, logger)
-
-        y_test_pred = prior_model_wrapper.predict(X_test)
-        log_exp_metrics("test", y_test, y_test_pred, logger)
-
-        # Add prediction confidence scores
-        y_valid_proba = prior_model_wrapper.predict_proba(X_valid)
-        valid_df["positive_label_prediction_probability"] = y_valid_proba[:, 1]
-
-        y_test_proba = prior_model_wrapper.predict_proba(X_test)
-        test_df["positive_label_prediction_probability"] = y_test_proba[:, 1]
-
-        save_dir = os.path.join(
-            config.get("benchmark", "data_dir"), "linear_svm"
-        )
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        valid_output_filepath = os.path.join(save_dir, "validation.csv")
-        valid_df.to_csv(valid_output_filepath, index=False)
-
-        test_output_filepath = os.path.join(save_dir, "test.csv")
-        test_df.to_csv(test_output_filepath, index=False)
     elif args.mode == "train_w_default_hp":
         prior_model_wrapper.create_default_model()
         prior_model_wrapper.fit()
     else:
-        error_msg = (
+        assert args.mode == "test", (
             f"Invalid mode: {args.mode}. Mode can only be train_w_default_hp, "
             "train_w_hp_tuning or test."
         )
-        assert args.mode == "test", error_msg
 
         model_save_filepath = os.path.join(output_dir, "linear_svm.pkl")
         with open(model_save_filepath, "rb") as f:
             prior_model_wrapper.clf = pickle.load(f)
 
-    if args.mode != "train_w_hp_tuning":
-        X_train = prior_model_wrapper.X_train
-        y_train = prior_model_wrapper.y_train
-        X_valid = prior_model_wrapper.X_valid
-        y_valid = prior_model_wrapper.y_valid
-        X_test = prior_model_wrapper.X_test
-        y_test = prior_model_wrapper.y_test
+    X_train = prior_model_wrapper.X_train
+    y_train = prior_model_wrapper.y_train
+    X_valid = prior_model_wrapper.X_valid
+    y_valid = prior_model_wrapper.y_valid
+    X_test = prior_model_wrapper.X_test
+    y_test = prior_model_wrapper.y_test
 
-        y_train_pred = prior_model_wrapper.predict(X_train)
-        log_exp_metrics("training", y_train, y_train_pred, logger)
+    y_train_pred = prior_model_wrapper.predict(X_train)
+    log_exp_metrics("training", y_train, y_train_pred, logger)
 
-        y_valid_pred = prior_model_wrapper.predict(X_valid)
-        log_exp_metrics("validation", y_valid, y_valid_pred, logger)
+    y_valid_pred = prior_model_wrapper.predict(X_valid)
+    log_exp_metrics("validation", y_valid, y_valid_pred, logger)
 
-        y_test_pred = prior_model_wrapper.predict(X_test)
-        log_exp_metrics("test", y_test, y_test_pred, logger)
+    y_test_pred = prior_model_wrapper.predict(X_test)
+    log_exp_metrics("test", y_test, y_test_pred, logger)
 
-        # Inspect prediction probabilities
-        y_valid_proba = prior_model_wrapper.predict_proba(X_valid)
-        log_exp_records(
-            y_valid, y_valid_pred, y_valid_proba, "validation", logger
-        )
+    # Add prediction confidence scores
+    valid_df = prior_model_wrapper.valid_df
+    test_df = prior_model_wrapper.test_df
 
-        y_test_proba = prior_model_wrapper.predict_proba(X_test)
-        log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
+    y_valid_proba = prior_model_wrapper.predict_proba(X_valid)
+    valid_df["positive_label_prediction_probability"] = y_valid_proba[:, 1]
+
+    y_test_proba = prior_model_wrapper.predict_proba(X_test)
+    test_df["positive_label_prediction_probability"] = y_test_proba[:, 1]
+
+    save_dir = os.path.join(config.get("benchmark", "data_dir"), "linear_svm")
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    if args.mode == "train_w_default_hp":
+        valid_output_filepath = os.path.join(save_dir, "validation_default.csv")
+        test_output_filepath = os.path.join(save_dir, "test_default.csv")
+    else:
+        valid_output_filepath = os.path.join(save_dir, "validation.csv")
+        test_output_filepath = os.path.join(save_dir, "test.csv")
+
+    valid_df.to_csv(valid_output_filepath, index=False)
+    test_df.to_csv(test_output_filepath, index=False)
