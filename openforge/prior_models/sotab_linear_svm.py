@@ -167,6 +167,9 @@ if __name__ == "__main__":
     y_test_proba = prior_model_wrapper.predict_proba(X_test)
     test_df["positive_label_prediction_probability"] = y_test_proba[:, 1]
 
+    log_exp_records(y_valid, y_valid_pred, y_valid_proba, "validation", logger)
+    log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
+
     save_dir = os.path.join(config.get("benchmark", "data_dir"), "linear_svm")
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
