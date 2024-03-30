@@ -42,6 +42,7 @@ class MRFWrapper:
             self.temperature = kwargs.get("temperature", 0)
 
         self.num_concepts = self._count_num_concepts()
+        self.hard_evidence = {}
         self.logger = get_logger()
 
     def _count_num_concepts(self):
@@ -57,14 +58,14 @@ class MRFWrapper:
 
     def create_mrf(self, mrf_hp_config: dict) -> fgraph:
         ternary_table = [
-            mrf_hp_config["ternary_alpha"],  # 0, 0, 0
-            mrf_hp_config["ternary_beta"],  # 0, 0, 1
-            mrf_hp_config["ternary_beta"],  # 0, 1, 0
+            mrf_hp_config["alpha"],  # 0, 0, 0
+            mrf_hp_config["beta"],  # 0, 0, 1
+            mrf_hp_config["gamma"],  # 0, 1, 0
             1e-9,  # 0, 1, 1
-            mrf_hp_config["ternary_beta"],  # 1, 0, 0
+            mrf_hp_config["delta"],  # 1, 0, 0
             1e-9,  # 1, 0, 1
             1e-9,  # 1, 1, 0
-            mrf_hp_config["ternary_gamma"],  # 1, 1, 1
+            1e-9,  # 1, 1, 1
         ]
         log_ternary_table = np.log(np.array(ternary_table))
 
@@ -85,6 +86,16 @@ class MRFWrapper:
             pred_proba = row.positive_label_prediction_probability
             prior = np.log(np.array([1 - pred_proba, pred_proba]))
             log_potentials.append(prior)
+
+            # Prior knowledge: if two labels are from the same vocabulary, they
+            # are not equivalent.
+            # label1_predicate = row.label_1.startswith("https")
+            # label2_predicate = row.label_2.startswith("https")
+
+            # if (label1_predicate and label2_predicate) or (
+            #     not label1_predicate and not label2_predicate
+            # ):
+            #     self.hard_evidence[var] = np.array([1, 0])
 
         unary_factor_group = fgroup.EnumFactorGroup(
             variables_for_factors=variables_for_unary_factors,
@@ -127,7 +138,11 @@ class MRFWrapper:
     # LBP inference
     def run_inference(self, fg, mrf_hp_config: dict) -> dict:
         lbp = infer.build_inferer(fg.bp_state, backend="bp")
-        lbp_arrays = lbp.init()
+
+        if self.hard_evidence:
+            lbp_arrays = lbp.init(evidence_updates=self.hard_evidence)
+        else:
+            lbp_arrays = lbp.init()
 
         start_time = time.time()
 
@@ -166,6 +181,13 @@ if __name__ == "__main__":
         help="Path to the experiment configuration file.",
     )
 
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="hp_tuning",
+        help="Mode: hp_tuning or inference.",
+    )
+
     args = parser.parse_args()
 
     # Parse experiment configuration
@@ -174,39 +196,58 @@ if __name__ == "__main__":
     # Set global random state
     fix_global_random_state(config.getint("hp_optimization", "random_seed"))
 
-    # Create MRF hyperparameter space
-    hp_space = HyperparameterSpace(
-        config.get("hp_optimization", "hp_spec_filepath"),
-        config.getint("hp_optimization", "random_seed"),
-    ).create_hp_space()
-
     # Create logger
     output_dir = config.get("results", "output_dir")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     logger = create_custom_logger(output_dir)
+    logger.info(f"Running program: {__file__}\n")
+    logger.info(f"{args}\n")
+
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
-    # Create MRF wrapper
-    if config.getboolean("mrf_lbp", "tune_lbp_hp"):
-        mrf_wrapper = MRFWrapper(
-            config.get("mrf_lbp", "validation_filepath"),
-            tune_lbp_hp=True,
-        )
+    if args.mode == "hp_tuning":
+        # Create MRF hyperparameter space
+        hp_space = HyperparameterSpace(
+            config.get("hp_optimization", "hp_spec_filepath"),
+            config.getint("hp_optimization", "random_seed"),
+        ).create_hp_space()
+
+        # Create MRF wrapper
+        if config.getboolean("mrf_lbp", "tune_lbp_hp"):
+            mrf_wrapper = MRFWrapper(
+                config.get("mrf_lbp", "validation_filepath"),
+                tune_lbp_hp=True,
+            )
+        else:
+            mrf_wrapper = MRFWrapper(
+                config.get("mrf_lbp", "validation_filepath"),
+                tune_lbp_hp=False,
+                num_iters=config.getint("mrf_lbp", "num_iters"),
+                damping=config.getfloat("mrf_lbp", "damping"),
+                temperature=config.getfloat("mrf_lbp", "temperature"),
+            )
+
+        # Hyperparameter tuning
+        tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
+        best_hp_config = tuning_engine.run()
     else:
-        mrf_wrapper = MRFWrapper(
-            config.get("mrf_lbp", "validation_filepath"),
-            tune_lbp_hp=False,
-            num_iters=config.getint("mrf_lbp", "num_iters"),
-            damping=config.getfloat("mrf_lbp", "damping"),
-            temperature=config.getfloat("mrf_lbp", "temperature"),
+        assert args.mode == "inference", (
+            f"Invalid mode: {args.mode}. Mode must either be hp_tuning or "
+            "inference."
         )
 
-    # Hyperparameter tuning
-    tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
-    best_hp_config = tuning_engine.run()
+        best_hp_config = {
+            "damping": 0.08970745746046305,
+            "num_iters": 802,
+            "temperature": 0.7708642445504665,
+            "alpha": 0.8724291335204413,
+            "beta": 0.39992414195493475,
+            "gamma": 0.22528654135003895,
+            "delta": 0.8580485593084425,
+        }
 
     test_mrf_wrapper = MRFWrapper(
         config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=True
