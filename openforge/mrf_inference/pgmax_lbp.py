@@ -12,7 +12,10 @@ from pgmax import fgraph, fgroup, infer, vgroup
 from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import TuningEngine
 from openforge.utils.custom_logging import create_custom_logger, get_logger
-from openforge.utils.mrf_common import evaluate_inference_results
+from openforge.utils.mrf_common import (
+    PRIOR_CONSTANT,
+    evaluate_inference_results,
+)
 from openforge.utils.util import fix_global_random_state, parse_config
 
 
@@ -84,6 +87,12 @@ class MRFWrapper:
             variables_for_unary_factors.append([var])
 
             pred_proba = row.positive_label_prediction_probability
+            # Get around the warning of dividing by zero encountered in log
+            if pred_proba == 1:
+                pred_proba = 1 - PRIOR_CONSTANT
+            elif pred_proba == 0:
+                pred_proba = PRIOR_CONSTANT
+
             prior = np.log(np.array([1 - pred_proba, pred_proba]))
             log_potentials.append(prior)
 

@@ -5,6 +5,9 @@ from sklearn.metrics import accuracy_score, f1_score
 from openforge.utils.custom_logging import get_logger
 
 
+PRIOR_CONSTANT = 1e-9
+
+
 def convert_var_name_to_var_id(var_name):
     var_id = tuple(int(elem) for elem in var_name.split("_")[1].split("-"))
 
