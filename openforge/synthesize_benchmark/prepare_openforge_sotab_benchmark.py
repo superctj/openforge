@@ -20,7 +20,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--train_prop", type=float, default=0.6, help="Training proportion."
+        "--train_prop", type=float, default=0.2, help="Training proportion."
     )
 
     parser.add_argument(
@@ -33,15 +33,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/ssd/congtj/openforge/sotab_v2/artifact/sotab_v2_test_openforge_small",  # noqa: 501
+        default="/ssd/congtj/openforge/sotab_v2/artifact/sotab_v2_test_openforge_large",  # noqa: 501
         help="Path to the output directory.",
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/sotab_v2/openforge_sotab_small",
-        help="Directory to store logs.",
+        default="/home/congtj/openforge/logs/sotab_v2/openforge_sotab_large",
+        help="Directory to save logs.",
     )
 
     args = parser.parse_args()
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         varname_dfidx_map[row.relation_variable_name] = i
 
     assert len(df) == len(varname_dfidx_map)
-    print(f"Number of concepts: {num_concepts}")
+    logger.info(f"Number of concepts: {num_concepts}")
 
     concept_indices = list(range(1, num_concepts + 1))
     train_indices = random.sample(
