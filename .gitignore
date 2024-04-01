@@ -12,3 +12,4 @@ models/
 data/
 exps/
 plotting/
+*.txt
