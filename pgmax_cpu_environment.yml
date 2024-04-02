@@ -13,7 +13,7 @@ dependencies:
   - brotli-python=1.0.9=py310h6a678d5_7
   - bzip2=1.0.8=h5eee18b_5
   - c-ares=1.19.1=h5eee18b_0
-  - ca-certificates=2024.2.2=hbcca054_0
+  - ca-certificates=2024.3.11=h06a4308_0
   - certifi=2024.2.2=py310h06a4308_0
   - cffi=1.16.0=py310h5eee18b_0
   - chardet=4.0.0=py310h06a4308_1003
@@ -26,6 +26,7 @@ dependencies:
   - conda-package-streaming=0.9.0=py310h06a4308_0
   - configspace=0.7.1=py310h278f3c1_0
   - distro=1.8.0=py310h06a4308_0
+  - fasttext=0.9.2=py310hd41b1e2_6
   - filelock=3.13.1=py310h06a4308_0
   - fmt=9.1.0=hdb19cb5_0
   - icu=73.1=h6a678d5_0
@@ -56,14 +57,17 @@ dependencies:
   - libopenblas=0.3.26=pthreads_h413a1c8_0
   - libsolv=0.7.24=he621ea3_0
   - libssh2=1.10.0=hdbd6064_2
-  - libstdcxx-ng=11.2.0=h1234567_1
+  - libstdcxx-ng=13.2.0=h7e041cc_5
   - libuuid=1.41.5=h5eee18b_0
   - libxml2=2.10.4=hf1b16e4_1
   - lz4-c=1.9.4=h6a678d5_0
   - menuinst=2.0.2=py310h06a4308_0
   - more-itertools=10.1.0=py310h06a4308_0
   - ncurses=6.4=h6a678d5_0
+  - nltk=3.8.1=py310h06a4308_0
   - numexpr=2.8.7=py310h286c3b5_0
+  - numpy=1.26.4=py310heeff2f4_0
+  - numpy-base=1.26.4=py310h8a23956_0
   - openblas=0.3.26=pthreads_h7a3da1a_0
   - openssl=3.2.1=hd590300_0
   - opt-einsum=3.3.0=hd8ed1ab_2
@@ -76,8 +80,10 @@ dependencies:
   - pkginfo=1.9.6=py310h06a4308_0
   - py-lief=0.12.3=py310h6a678d5_0
   - pybind11-abi=4=hd3eb1b0_1
+  - pybind11-global=2.10.4=py310hdb19cb5_0
   - pycosat=0.6.6=py310h5eee18b_0
   - pycparser=2.21=pyhd3eb1b0_0
+  - pymongo=3.12.0=py310h295c915_0
   - pysocks=1.7.1=py310h06a4308_0
   - python=3.10.13=h955ad1f_0
   - python-dateutil=2.8.2=pyhd3eb1b0_0
@@ -216,7 +222,6 @@ dependencies:
       - notebook==7.1.1
       - notebook-shim==0.2.4
       - numba==0.59.0
-      - numpy==1.26.4
       - oauthlib==3.2.2
       - osqp==0.6.5
       - overrides==7.7.0
