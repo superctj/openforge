@@ -55,7 +55,9 @@ def load_openforge_sotab_split(
     return X, y, df
 
 
-def load_openforge_sotab_small(data_dir: str, logger: logging.Logger) -> tuple[
+def load_openforge_sotab_benchmark(
+    data_dir: str, logger: logging.Logger
+) -> tuple[
     np.ndarray,
     np.ndarray,
     np.ndarray,
@@ -66,8 +68,8 @@ def load_openforge_sotab_small(data_dir: str, logger: logging.Logger) -> tuple[
     pd.DataFrame,
     pd.DataFrame,
 ]:
-    """Load training, validation, and test splits of the OpenForge-SOTAB-Small
-    dataset.
+    """Load training, validation, and test splits of the OpenForge-SOTAB-X
+    benchmark.
 
     Args:
         data_dir: The directory containing the benchmark.
