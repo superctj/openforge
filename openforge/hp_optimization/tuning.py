@@ -81,7 +81,7 @@ class PriorModelTuningEngine:
             self.prior_model_wrapper.X_valid
         )
 
-        f1_score, accuracy = evaluate_prior_model_predictions(
+        f1_score, accuracy, _, _ = evaluate_prior_model_predictions(
             self.prior_model_wrapper.y_valid, y_valid_pred
         )
 
