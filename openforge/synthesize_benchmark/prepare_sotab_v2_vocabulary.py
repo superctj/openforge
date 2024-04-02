@@ -96,7 +96,7 @@ def get_value_signatures(
         else:
             count += 1
 
-    return column_values, fasttext_signature
+    return column_values, fasttext_signature, table_path, col_idx
 
 
 def get_column_values(table_path: str, column_index: int) -> list:
@@ -143,13 +143,17 @@ def get_label_signatures(
     name_qgram_signature = set(qgram_transformer.transform(label))
     name_fasttext_signature = fasttext_transformer.transform([label])
 
-    col_values, value_fasttext_signature = get_value_signatures(
-        tblname_colidx_pairs, table_dir, fasttext_transformer
+    col_values, value_fasttext_signature, table_path, col_idx = (
+        get_value_signatures(
+            tblname_colidx_pairs, table_dir, fasttext_transformer
+        )
     )
 
     return (
         label,
         col_values,
+        table_path,
+        col_idx,
         name_qgram_signature,
         name_fasttext_signature,
         value_fasttext_signature,
@@ -272,6 +276,10 @@ def synthesize_sotab_v2_mrf_data(
             ("label_2", str),
             ("label_1_processed", str),
             ("label_2_processed", str),
+            ("label_1_table_path", str),
+            ("label_2_table_path", str),
+            ("label_1_col_idx", int),
+            ("label_2_col_idx", int),
             ("name_qgram_similarity", float),
             ("name_jaccard_similarity", float),
             ("name_edit_distance", int),
@@ -294,6 +302,8 @@ def synthesize_sotab_v2_mrf_data(
         (
             label_i_name,
             label_i_col_values,
+            label_i_table_path,
+            label_i_col_idx,
             label_i_name_qgram_signature,
             label_i_name_fasttext_signature,
             label_i_value_fasttext_signature,
@@ -327,6 +337,8 @@ def synthesize_sotab_v2_mrf_data(
             (
                 label_j_name,
                 label_j_col_values,
+                label_j_table_path,
+                label_j_col_idx,
                 label_j_name_qgram_signature,
                 label_j_name_fasttext_signature,
                 label_j_value_fasttext_signature,
@@ -388,6 +400,10 @@ def synthesize_sotab_v2_mrf_data(
                     label_j,
                     label_i_name,
                     label_j_name,
+                    label_i_table_path,
+                    label_j_table_path,
+                    label_i_col_idx,
+                    label_j_col_idx,
                     name_qgram_sim,
                     name_jaccard_sim,
                     name_edit_dist,
@@ -419,7 +435,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--split", type=str, default="training", help="Split of source data."
+        "--split", type=str, default="test", help="Split of source data."
     )
 
     parser.add_argument(
@@ -428,13 +444,6 @@ if __name__ == "__main__":
         default="/ssd/congtj",
         help="Directory containing fasttext model weights.",
     )
-
-    # parser.add_argument(
-    #     "--value_sample_size",
-    #     type=int,
-    #     default=10,
-    #     help="Number of sample values per column for feature extraction.",
-    # )
 
     parser.add_argument(
         "--random_seed",
@@ -469,7 +478,8 @@ if __name__ == "__main__":
         os.makedirs(args.log_dir)
 
     logger = create_custom_logger(args.log_dir)
-    logger.info(args)
+    logger.info(f"Running program: {__file__}")
+    logger.info(f"{args}\n")
 
     equivalent_entries = find_equivalent_labels(
         args.source_data_dir, args.split, logger
