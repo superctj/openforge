@@ -20,7 +20,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--train_prop", type=float, default=0.2, help="Training proportion."
+        "--train_prop", type=float, default=0, help="Training proportion."
     )
 
     parser.add_argument(
@@ -33,14 +33,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/ssd/congtj/openforge/sotab_v2/artifact/sotab_v2_test_openforge_large",  # noqa: 501
+        default="/ssd/congtj/openforge/sotab_v2/artifact/sotab_v2_test_openforge_xlarge",  # noqa: 501
         help="Path to the output directory.",
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/sotab_v2/openforge_sotab_large",
+        default="/home/congtj/openforge/logs/sotab_v2/openforge_sotab_xlarge",
         help="Directory to save logs.",
     )
 
@@ -153,14 +153,16 @@ if __name__ == "__main__":
         var_name = f"R_{pair[0]}-{pair[1]}"
         test_var_names.append(var_name)
 
-    train_df["relation_variable_name"] = train_var_names
+    if args.train_prop != 0:
+        train_df["relation_variable_name"] = train_var_names
+        train_output_filepath = os.path.join(args.output_dir, "training.csv")
+        train_df.to_csv(train_output_filepath, index=False)
+
     valid_df["relation_variable_name"] = valid_var_names
     test_df["relation_variable_name"] = test_var_names
 
-    train_output_filepath = os.path.join(args.output_dir, "training.csv")
     valid_output_filepath = os.path.join(args.output_dir, "validation.csv")
     test_output_filepath = os.path.join(args.output_dir, "test.csv")
 
-    train_df.to_csv(train_output_filepath, index=False)
     valid_df.to_csv(valid_output_filepath, index=False)
     test_df.to_csv(test_output_filepath, index=False)
