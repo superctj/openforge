@@ -4,7 +4,12 @@ import os
 import numpy as np
 import pandas as pd
 
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 
 
 def load_openforge_sotab_split(
@@ -118,8 +123,10 @@ def evaluate_prior_model_predictions(
 
     f1 = f1_score(y, y_pred)
     accuracy = accuracy_score(y, y_pred)
+    precision = precision_score(y, y_pred)
+    recall = precision_score(y, y_pred)
 
-    return f1, accuracy
+    return f1, accuracy, precision, recall
 
 
 def log_exp_metrics(
@@ -133,11 +140,15 @@ def log_exp_metrics(
         logger: The logging instance.
     """
 
-    f1, accuracy = evaluate_prior_model_predictions(y, y_pred)
+    f1, accuracy, precision, recall = evaluate_prior_model_predictions(
+        y, y_pred
+    )
 
     logger.info(f"Split: {split}")
     logger.info(f"  Accuracy: {accuracy:.2f}")
-    logger.info(f"  F1 score: {f1:.2f}\n")
+    logger.info(f"  F1 score: {f1:.2f}")
+    logger.info(f"  Precision: {precision:.2f}")
+    logger.info(f"  Recall: {recall:.2f}\n")
 
 
 def log_exp_records(
