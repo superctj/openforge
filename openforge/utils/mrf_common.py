@@ -1,6 +1,11 @@
 import pandas as pd
 
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 
 from openforge.utils.custom_logging import get_logger
 
@@ -65,12 +70,18 @@ def evaluate_inference_results(
             f"Prior test accuracy: {accuracy_score(y_true, y_prior):.2f}"
         )
         logger.info(f"Prior F1 score: {f1_score(y_true, y_prior):.2f}")
+        logger.info(f"Prior precision: {precision_score(y_true, y_prior):.2f}")
+        logger.info(f"Prior recall: {recall_score(y_true, y_prior):.2f}")
 
     mrf_accuracy = accuracy_score(y_true, y_pred)
     mrf_f1_score = f1_score(y_true, y_pred)
+    mrf_precision = precision_score(y_true, y_pred)
+    mrf_recall = recall_score(y_true, y_pred)
 
     if log_predictions:
         logger.info(f"MRF test accuracy: {mrf_accuracy:.2f}")
         logger.info(f"MRF F1 score: {mrf_f1_score:.2f}")
+        logger.info(f"MRF precision: {mrf_precision:.2f}")
+        logger.info(f"MRF recall: {mrf_recall:.2f}")
 
     return mrf_f1_score, mrf_accuracy
