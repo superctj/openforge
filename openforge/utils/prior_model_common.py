@@ -126,7 +126,7 @@ def evaluate_prior_model_predictions(
     f1 = f1_score(y, y_pred)
     accuracy = accuracy_score(y, y_pred)
     precision = precision_score(y, y_pred)
-    recall = precision_score(y, y_pred)
+    recall = recall_score(y, y_pred)
 
     return f1, accuracy, precision, recall
 
