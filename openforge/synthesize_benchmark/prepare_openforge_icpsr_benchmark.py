@@ -3,6 +3,7 @@ import logging
 import os
 import random
 
+from collections import defaultdict
 from dataclasses import make_dataclass
 from enum import Enum
 
@@ -65,26 +66,28 @@ def collect_relation_instances(term_relations: pd.DataFrame) -> dict:
 
 
 def create_splits(
-    concept_ids: list[int], num_concepts: int, train_prop: float
+    sorted_concept_ids: list[int], num_concepts: int, train_prop: float
 ) -> tuple[list[int], list[int], list[int]]:
+    top_concept_ids = sorted_concept_ids[:num_concepts]
+
     num_train_concepts = int(num_concepts * train_prop)
     num_valid_concepts = int(num_concepts * (1 - train_prop) / 2)
-    num_test_concepts = num_concepts - num_train_concepts - num_valid_concepts
-    assert num_valid_concepts == num_test_concepts, (
-        "The number of validation concepts should be equal to the number of "
-        "test concepts."
-    )
+    # num_test_concepts = num_concepts - num_train_concepts - num_valid_concepts
+    # assert num_valid_concepts == num_test_concepts, (
+    #     "The number of validation concepts should be equal to the number of "
+    #     "test concepts."
+    # )
 
-    train_ids = random.sample(population=concept_ids, k=num_train_concepts)
-    valid_test_ids = list(set(concept_ids) - set(train_ids))
+    train_ids = random.sample(population=top_concept_ids, k=num_train_concepts)
+    valid_test_ids = list(set(top_concept_ids) - set(train_ids))
     valid_ids = random.sample(
         population=valid_test_ids,
         k=num_valid_concepts,
     )
     test_ids = list(set(valid_test_ids) - set(valid_ids))
-    test_ids = random.sample(
-        population=test_ids,
-        k=num_test_concepts,
+    assert len(valid_ids) == len(test_ids), (
+        "The number of validation concepts should be equal to the number of "
+        "test concepts."
     )
 
     train_ids.sort()
@@ -211,6 +214,46 @@ def save_data(split_data: list, split: str, output_dir: str):
     split_df.to_csv(output_filepath, index=False)
 
 
+def get_sorted_concept_ids(
+    term_relations: pd.DataFrame, concept_ids: list[int], logger: logging.Logger
+) -> dict:
+    concept_relations_visibility = {}
+
+    for concept in concept_ids:
+        """
+        1st 0: no equivalent concepts
+        2nd 0: no broader concepts
+        3rd 0: no narrower concepts
+        """
+        concept_relations_visibility[concept] = [0, 0, 0]
+
+    for row in term_relations.itertuples():
+        subject_id = int(row.SUBJECT_ID)
+        assert subject_id in concept_relations_visibility
+        object_id = int(row.OBJECT_ID)
+        relationship = int(row.RELATIONSHIP)
+
+        if subject_id < object_id:
+            # subject is broader than object
+            if relationship == 1:
+                concept_relations_visibility[subject_id][2] = 1
+            # subject is narrower than object
+            elif relationship == 2:
+                concept_relations_visibility[subject_id][1] = 1
+            # subject is a referred or nonpreferred term of object
+            elif relationship == 4 or relationship == 5:
+                concept_relations_visibility[subject_id][0] = 1
+
+    temp_dict = defaultdict(int)
+    for key, val in concept_relations_visibility.items():
+        temp_dict[key] = sum(val)
+
+    sorted_dict = sorted(temp_dict.items(), key=lambda x: x[1], reverse=True)
+    sorted_concept_ids = [key for key, _ in sorted_dict]
+
+    return sorted_concept_ids
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -285,15 +328,19 @@ if __name__ == "__main__":
     subject_terms = pd.read_excel(subject_terms_filepath)
     term_relations = pd.read_excel(relation_filepath)
 
+    concept_ids = subject_terms["TERM_ID"].to_list()
+    sorted_concept_ids = get_sorted_concept_ids(
+        term_relations, concept_ids, logger
+    )
+
     id_term_map = {}
     for row in subject_terms.itertuples():
         id_term_map[row.TERM_ID] = row.TERM
 
-    concept_ids = subject_terms["TERM_ID"].to_list()
     relation_instances = collect_relation_instances(term_relations)
 
     train_ids, valid_ids, test_ids = create_splits(
-        concept_ids, args.num_concepts, args.train_prop
+        sorted_concept_ids, args.num_concepts, args.train_prop
     )
 
     train_data = synthesize_split_data(
