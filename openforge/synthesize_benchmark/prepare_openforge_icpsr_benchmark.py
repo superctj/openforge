@@ -7,6 +7,7 @@ from collections import defaultdict
 from dataclasses import make_dataclass
 from enum import Enum
 
+import numpy as np
 import pandas as pd
 
 from openforge.feature_extraction.fb_fasttext import FasttextTransformer
@@ -23,7 +24,7 @@ class RelationType(Enum):
     NULL = 0
     EQUIV = 1  # Equivalent
     HYPER = 2  # Hypernymy
-    HYPON = 3  # Hyponymy
+    HYPO = 3  # Hyponymy
 
 
 DataEntry = make_dataclass(
@@ -43,8 +44,103 @@ DataEntry = make_dataclass(
 )
 
 
-def collect_relation_instances(term_relations: pd.DataFrame) -> dict:
-    relation_instances = {}
+def collect_concept_relations(
+    term_relations: pd.DataFrame, concept_ids: list[int], logger: logging.Logger
+) -> tuple[dict, dict, dict]:
+    concept_relations_visibility = {}
+    concept_relation_map = {}
+    pair_relation_map = {}
+
+    for concept in concept_ids:
+        """
+        1st 0: no equivalent concepts
+        2nd 0: no broader concepts
+        3rd 0: no narrower concepts
+        """
+        concept_relations_visibility[concept] = [0, 0, 0]
+
+    for row in term_relations.itertuples():
+        subject_id = int(row.SUBJECT_ID)
+        assert subject_id in concept_relations_visibility
+        object_id = int(row.OBJECT_ID)
+        relationship = int(row.RELATIONSHIP)
+
+        if subject_id < object_id:
+            # subject is broader than object
+            if relationship == 1:
+                concept_relations_visibility[subject_id][2] = 1
+
+                if subject_id not in concept_relation_map:
+                    concept_relation_map[subject_id] = [
+                        (object_id, RelationType.HYPER)
+                    ]
+                else:
+                    concept_relation_map[subject_id].append(
+                        (object_id, RelationType.HYPER)
+                    )
+
+                pair_relation_map[(subject_id, object_id)] = RelationType.HYPER
+            # subject is narrower than object
+            elif relationship == 2:
+                concept_relations_visibility[subject_id][1] = 1
+
+                if subject_id not in concept_relation_map:
+                    concept_relation_map[subject_id] = [
+                        (object_id, RelationType.HYPO)
+                    ]
+                else:
+                    concept_relation_map[subject_id].append(
+                        (object_id, RelationType.HYPO)
+                    )
+
+                pair_relation_map[(subject_id, object_id)] = RelationType.HYPO
+            # subject is a referred or nonpreferred term of object
+            elif relationship == 4 or relationship == 5:
+                concept_relations_visibility[subject_id][0] = 1
+
+                if subject_id not in concept_relation_map:
+                    concept_relation_map[subject_id] = [
+                        (object_id, RelationType.EQUIV)
+                    ]
+                else:
+                    concept_relation_map[subject_id].append(
+                        (object_id, RelationType.EQUIV)
+                    )
+
+                pair_relation_map[(subject_id, object_id)] = RelationType.EQUIV
+
+    temp_dict = defaultdict(int)
+    for key, val in concept_relations_visibility.items():
+        temp_dict[key] = sum(val)
+
+    sorted_concept_ids = sorted(
+        temp_dict.items(), key=lambda x: x[1], reverse=True
+    )
+
+    return sorted_concept_ids, concept_relation_map, pair_relation_map
+
+
+def expand_split_concept_vocabulary(
+    split_top_concept_ids: list[int], concept_relation_map: dict
+) -> list:
+    split_top_concept_ids.sort()
+    split_concept_ids = set(split_top_concept_ids)
+
+    for concept_id in split_top_concept_ids:
+        if concept_id in concept_relation_map:
+            for object_concept_id, _ in concept_relation_map[concept_id]:
+                split_concept_ids.add(object_concept_id)
+
+    return list(split_top_concept_ids)
+
+
+def collect_ordered_relation_instances(term_relations: pd.DataFrame):
+    ordered_relation_instances = {
+        RelationType.HYPER: [],
+        RelationType.HYPO: [],
+        RelationType.EQUIV: [],
+    }
+    pair_relation_map = {}
 
     for row in term_relations.itertuples():
         subject_id = int(row.SUBJECT_ID)
@@ -54,45 +150,171 @@ def collect_relation_instances(term_relations: pd.DataFrame) -> dict:
         if subject_id < object_id:
             # subject is broader than object
             if relationship == 1:
-                relation_instances[(subject_id, object_id)] = RelationType.HYPER
+                ordered_relation_instances[RelationType.HYPER].append(
+                    (subject_id, object_id)
+                )
+                pair_relation_map[(subject_id, object_id)] = RelationType.HYPER
             # subject is narrower than object
             elif relationship == 2:
-                relation_instances[(subject_id, object_id)] = RelationType.HYPON
+                ordered_relation_instances[RelationType.HYPO].append(
+                    (subject_id, object_id)
+                )
+                pair_relation_map[(subject_id, object_id)] = RelationType.HYPO
             # subject is a referred or nonpreferred term of object
             elif relationship == 4 or relationship == 5:
-                relation_instances[(subject_id, object_id)] = RelationType.EQUIV
+                ordered_relation_instances[RelationType.EQUIV].append(
+                    (subject_id, object_id)
+                )
+                pair_relation_map[(subject_id, object_id)] = RelationType.EQUIV
 
-        return relation_instances
+    return ordered_relation_instances, pair_relation_map
 
 
 def create_splits(
-    sorted_concept_ids: list[int], num_concepts: int, train_prop: float
+    sorted_concept_ids: list[int], concept_relation_map: dict, train_prop: float
 ) -> tuple[list[int], list[int], list[int]]:
-    top_concept_ids = sorted_concept_ids[:num_concepts]
+    # Select top concepts with the most relations
+    top_concept_ids = []
+    for concept_id, relation_count in sorted_concept_ids:
+        if relation_count == 3:
+            top_concept_ids.append(concept_id)
+        else:
+            assert relation_count < 3
+            break
 
-    num_train_concepts = int(num_concepts * train_prop)
-    num_valid_concepts = int(num_concepts * (1 - train_prop) / 2)
-    # num_test_concepts = num_concepts - num_train_concepts - num_valid_concepts
-    # assert num_valid_concepts == num_test_concepts, (
-    #     "The number of validation concepts should be equal to the number of "
-    #     "test concepts."
-    # )
+    num_top_train_concepts = int(len(top_concept_ids) * train_prop)
+    num_top_valid_concepts = int(len(top_concept_ids) * (1 - train_prop) / 2)
 
-    train_ids = random.sample(population=top_concept_ids, k=num_train_concepts)
-    valid_test_ids = list(set(top_concept_ids) - set(train_ids))
-    valid_ids = random.sample(
-        population=valid_test_ids,
-        k=num_valid_concepts,
+    top_train_concept_ids = random.sample(
+        population=top_concept_ids, k=num_top_train_concepts
     )
-    test_ids = list(set(valid_test_ids) - set(valid_ids))
-    assert len(valid_ids) == len(test_ids), (
-        "The number of validation concepts should be equal to the number of "
-        "test concepts."
+    top_valid_test_concept_ids = list(
+        set(top_concept_ids) - set(top_train_concept_ids)
+    )
+    top_valid_concept_ids = random.sample(
+        population=top_valid_test_concept_ids,
+        k=num_top_valid_concepts,
+    )
+    top_test_concept_ids = list(
+        set(top_valid_test_concept_ids) - set(top_valid_concept_ids)
     )
 
-    train_ids.sort()
-    valid_ids.sort()
-    test_ids.sort()
+    train_concept_ids = expand_split_concept_vocabulary(
+        top_train_concept_ids, concept_relation_map
+    )
+    valid_concept_ids = expand_split_concept_vocabulary(
+        top_valid_concept_ids, concept_relation_map
+    )
+    test_concept_ids = expand_split_concept_vocabulary(
+        top_test_concept_ids, concept_relation_map
+    )
+
+    return train_concept_ids, valid_concept_ids, test_concept_ids
+
+
+def create_splits_for_single_relation(
+    relation_instances: list, train_prop: float, logger: logging.Logger
+) -> tuple[list, list, list]:
+    num_relation_instances = len(relation_instances)
+    num_train_instances = int(num_relation_instances * train_prop)
+
+    train_instances = random.sample(
+        population=relation_instances, k=num_train_instances
+    )
+    valid_test_instances = list(set(relation_instances) - set(train_instances))
+
+    num_valid_instances = len(valid_test_instances) // 2
+    valid_instances = random.sample(
+        population=valid_test_instances,
+        k=num_valid_instances,
+    )
+    test_instances = list(set(valid_test_instances) - set(valid_instances))
+
+    logger.info(f"Number of training instances: {len(train_instances)}")
+    logger.info(f"Number of validation instances: {len(valid_instances)}")
+    logger.info(f"Number of test instances: {len(test_instances)}")
+
+    return train_instances, valid_instances, test_instances
+
+
+def collect_split_vocabulary(
+    equiv_instances: list, hyper_instances: list, hypo_instances: list
+) -> list[int]:
+    split_vocabulary = set()
+
+    for instance in equiv_instances:
+        split_vocabulary.add(instance[0])
+        split_vocabulary.add(instance[1])
+
+    for instance in hyper_instances:
+        split_vocabulary.add(instance[0])
+        split_vocabulary.add(instance[1])
+
+    for instance in hypo_instances:
+        split_vocabulary.add(instance[0])
+        split_vocabulary.add(instance[1])
+
+    split_vocabulary = list(split_vocabulary)
+    split_vocabulary.sort()
+
+    return split_vocabulary
+
+
+def create_splits_from_relation_instances(
+    ordered_relation_instances: dict,
+    num_intances_per_relation: int,
+    train_prop: float,
+    logger: logging.Logger,
+):
+    for key in ordered_relation_instances:
+        logger.info(f"\nRelation type: {key}")
+        logger.info(
+            f"Number of instances: {len(ordered_relation_instances[key])}"
+        )
+
+    sampled_equiv_instances = random.sample(
+        population=ordered_relation_instances[RelationType.EQUIV],
+        k=num_intances_per_relation,
+    )
+    sampled_hyper_instances = random.sample(
+        population=ordered_relation_instances[RelationType.HYPER],
+        k=num_intances_per_relation,
+    )
+    sampled_hypo_instances = random.sample(
+        population=ordered_relation_instances[RelationType.HYPO],
+        k=num_intances_per_relation,
+    )
+
+    logger.info("\nEquivalent relation:")
+    train_equiv_instances, valid_equiv_instances, test_equiv_instances = (
+        create_splits_for_single_relation(
+            sampled_equiv_instances, train_prop, logger
+        )
+    )
+
+    logger.info("\nHypernymy relation:")
+    train_hyper_instances, valid_hyper_instances, test_hyper_instances = (
+        create_splits_for_single_relation(
+            sampled_hyper_instances, train_prop, logger
+        )
+    )
+
+    logger.info("\nHyponymy relation:")
+    train_hypo_instances, valid_hypo_instances, test_hypo_instances = (
+        create_splits_for_single_relation(
+            sampled_hypo_instances, train_prop, logger
+        )
+    )
+
+    train_ids = collect_split_vocabulary(
+        train_equiv_instances, train_hyper_instances, train_hypo_instances
+    )
+    valid_ids = collect_split_vocabulary(
+        valid_equiv_instances, valid_hyper_instances, valid_hypo_instances
+    )
+    test_ids = collect_split_vocabulary(
+        test_equiv_instances, test_hyper_instances, test_hypo_instances
+    )
 
     return train_ids, valid_ids, test_ids
 
@@ -142,7 +364,7 @@ def synthesize_split_data(
         for j in range(i + 1, len(split_ids)):
             concept_j_id = split_ids[j]
             concept_j = id_term_map[concept_j_id]
-            logger.info(f"Concept {j+1}: {concept_j}")
+            logger.info(f"\tConcept {j+1}: {concept_j}")
 
             (
                 concept_j_name_qgram_signature,
@@ -183,7 +405,7 @@ def synthesize_split_data(
                     relation_variable_label = 1
                 elif relation_type == RelationType.HYPER:
                     relation_variable_label = 2
-                elif relation_type == RelationType.HYPON:
+                elif relation_type == RelationType.HYPO:
                     relation_variable_label = 3
                 else:
                     raise ValueError(f"Unknown relation type: {relation_type}.")
@@ -208,50 +430,19 @@ def synthesize_split_data(
     return data_entries
 
 
-def save_data(split_data: list, split: str, output_dir: str):
+def save_data(
+    split_data: list, split: str, output_dir: str, logger: logging.Logger
+):
     output_filepath = os.path.join(output_dir, f"openforge_icpsr_{split}.csv")
     split_df = pd.DataFrame(split_data)
+
+    y = split_df["relation_variable_label"]
+    logger.info(f"\tNumber of null relation instances: {np.sum(y == 0)}")
+    logger.info(f"\tNumber of equivalent instances: {np.sum(y == 1)}")
+    logger.info(f"\tNumber of hypernymy instances: {np.sum(y == 2)}")
+    logger.info(f"\tNumber of hyponymy instances: {np.sum(y == 3)}\n")
+
     split_df.to_csv(output_filepath, index=False)
-
-
-def get_sorted_concept_ids(
-    term_relations: pd.DataFrame, concept_ids: list[int], logger: logging.Logger
-) -> dict:
-    concept_relations_visibility = {}
-
-    for concept in concept_ids:
-        """
-        1st 0: no equivalent concepts
-        2nd 0: no broader concepts
-        3rd 0: no narrower concepts
-        """
-        concept_relations_visibility[concept] = [0, 0, 0]
-
-    for row in term_relations.itertuples():
-        subject_id = int(row.SUBJECT_ID)
-        assert subject_id in concept_relations_visibility
-        object_id = int(row.OBJECT_ID)
-        relationship = int(row.RELATIONSHIP)
-
-        if subject_id < object_id:
-            # subject is broader than object
-            if relationship == 1:
-                concept_relations_visibility[subject_id][2] = 1
-            # subject is narrower than object
-            elif relationship == 2:
-                concept_relations_visibility[subject_id][1] = 1
-            # subject is a referred or nonpreferred term of object
-            elif relationship == 4 or relationship == 5:
-                concept_relations_visibility[subject_id][0] = 1
-
-    temp_dict = defaultdict(int)
-    for key, val in concept_relations_visibility.items():
-        temp_dict[key] = sum(val)
-
-    sorted_dict = sorted(temp_dict.items(), key=lambda x: x[1], reverse=True)
-    sorted_concept_ids = [key for key, _ in sorted_dict]
-
-    return sorted_concept_ids
 
 
 if __name__ == "__main__":
@@ -265,14 +456,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--num_concepts",
+        "--num_intances_per_relation",
         type=str,
-        default=300,
-        help="Total number of concepts in the synthesized vocabulary.",
+        default=40,
+        help="The number of instances to consider per relation type.",
     )
 
     parser.add_argument(
-        "--train_prop", type=float, default=0.6, help="Training proportion."
+        "--train_prop", type=float, default=0.5, help="Training proportion."
     )
 
     parser.add_argument(
@@ -328,25 +519,29 @@ if __name__ == "__main__":
     subject_terms = pd.read_excel(subject_terms_filepath)
     term_relations = pd.read_excel(relation_filepath)
 
+    logger.info(f"\nSubject terms: {subject_terms.head()}")
+    logger.info(f"\nTerm relations: {term_relations.head()}\n")
+
     concept_ids = subject_terms["TERM_ID"].to_list()
-    sorted_concept_ids = get_sorted_concept_ids(
-        term_relations, concept_ids, logger
+    ordered_relation_instances, pair_relation_map = (
+        collect_ordered_relation_instances(term_relations)
     )
 
     id_term_map = {}
     for row in subject_terms.itertuples():
         id_term_map[row.TERM_ID] = row.TERM
 
-    relation_instances = collect_relation_instances(term_relations)
-
-    train_ids, valid_ids, test_ids = create_splits(
-        sorted_concept_ids, args.num_concepts, args.train_prop
+    train_ids, valid_ids, test_ids = create_splits_from_relation_instances(
+        ordered_relation_instances,
+        args.num_intances_per_relation,
+        args.train_prop,
+        logger,
     )
 
     train_data = synthesize_split_data(
         train_ids,
         id_term_map,
-        relation_instances,
+        pair_relation_map,
         args.fasttext_model_dir,
         logger,
     )
@@ -354,7 +549,7 @@ if __name__ == "__main__":
     valid_data = synthesize_split_data(
         valid_ids,
         id_term_map,
-        relation_instances,
+        pair_relation_map,
         args.fasttext_model_dir,
         logger,
     )
@@ -362,11 +557,16 @@ if __name__ == "__main__":
     test_data = synthesize_split_data(
         test_ids,
         id_term_map,
-        relation_instances,
+        pair_relation_map,
         args.fasttext_model_dir,
         logger,
     )
 
-    save_data(train_data, "training", args.output_dir)
-    save_data(valid_data, "validation", args.output_dir)
-    save_data(test_data, "test", args.output_dir)
+    logger.info("Training split:")
+    save_data(train_data, "training", args.output_dir, logger)
+
+    logger.info("Validation split:")
+    save_data(valid_data, "validation", args.output_dir, logger)
+
+    logger.info("Test split:")
+    save_data(test_data, "test", args.output_dir, logger)
