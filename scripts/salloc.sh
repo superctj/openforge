@@ -1,0 +1,1 @@
+salloc --account=jag0 --nodes=1 --ntasks-per-node=1 --cpus-per-task=4 --mem=64g
