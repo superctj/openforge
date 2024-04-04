@@ -456,14 +456,14 @@ if __name__ == "__main__":
         "--output_dir",
         type=str,
         default="/ssd/congtj/openforge/sotab_v2/artifact",
-        help="Path to the output directory.",
+        help="Directory to save outputs.",
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
         default="/home/congtj/openforge/logs/sotab_v2",
-        help="Directory to store logs.",
+        help="Directory to save logs.",
     )
 
     args = parser.parse_args()
