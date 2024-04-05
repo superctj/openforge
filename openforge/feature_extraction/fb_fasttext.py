@@ -369,25 +369,3 @@ class FasttextTransformer:
             return np.empty(0)
 
         return np.mean(np.array(embeddings), axis=0)
-
-
-def compute_fasttext_signature(
-    col_list, feature_extractor, num_val_samples: int
-):
-    # randomly pick a corresponding table column to compute value signature
-    count = 0
-
-    while count < VALUE_SIGNATURE_ATTEMPTS:
-        rnd_idx = random.randrange(len(col_list))
-        table_id, col_name = col_list[rnd_idx]
-        df = readCSVFileWithTableID(
-            table_id, usecols=[col_name], nrows=num_val_samples
-        ).astype(str)
-
-        fasttext_signature = feature_extractor.transform(df[col_name].tolist())
-        if len(fasttext_signature) != 0:
-            break
-        else:
-            count += 1
-
-    return fasttext_signature
