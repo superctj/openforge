@@ -78,7 +78,7 @@ def get_concept_signatures(
     name_qgram_signature = set(qgram_model.transform(concept))
     name_fasttext_signature = fasttext_model.transform([concept])
 
-    col_values, value_fasttext_signature, table_id, col_name = (
+    value_fasttext_signature, col_values, table_id, col_name = (
         get_value_fasttext_signature(
             tblid_colname_pairs, fasttext_model, num_val_samples
         )
@@ -196,6 +196,13 @@ def create_pos_and_neg_instances(
                 value_jaccard_sim = jaccard_index(
                     set(reference_concept_col_values),
                     set(merged_concept_col_values),
+                )
+
+                logger.info(
+                    f"reference shape: {reference_concept_value_fasttext_signature.shape}"
+                )
+                logger.info(
+                    f"merged shape: {merged_concept_value_fasttext_signature.shape}"
                 )
                 value_fasttext_sim = cosine_similarity(
                     reference_concept_value_fasttext_signature,
@@ -415,7 +422,7 @@ if __name__ == "__main__":
     random.seed(args.random_seed)
 
     instance_name = os.path.join(
-        f"top_{args.num_head_nodes}_nodes", f"training_prop_{args.train_prop})"
+        f"top_{args.num_head_nodes}_nodes", f"training_prop_{args.train_prop}"
     )
     output_dir = os.path.join(args.output_dir, instance_name)
 
