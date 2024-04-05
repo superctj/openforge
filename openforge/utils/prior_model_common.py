@@ -208,7 +208,7 @@ def load_openforge_icpsr_benchmark(
 
 
 def evaluate_prior_model_predictions(
-    y: np.ndarray, y_pred: np.ndarray
+    y: np.ndarray, y_pred: np.ndarray, multi_class: bool = False
 ) -> tuple[float, float]:
     """Evaluate predictions of a prior model.
 
@@ -221,16 +221,27 @@ def evaluate_prior_model_predictions(
         accuracy: The accuracy.
     """
 
-    f1 = f1_score(y, y_pred)
     accuracy = accuracy_score(y, y_pred)
-    precision = precision_score(y, y_pred)
-    recall = recall_score(y, y_pred)
+
+    if multi_class:
+        average_type = "macro"
+        f1 = f1_score(y, y_pred, average=average_type)
+        precision = precision_score(y, y_pred, average=average_type)
+        recall = recall_score(y, y_pred, average=average_type)
+    else:
+        f1 = f1_score(y, y_pred)
+        precision = precision_score(y, y_pred)
+        recall = recall_score(y, y_pred)
 
     return f1, accuracy, precision, recall
 
 
 def log_exp_metrics(
-    split: str, y: np.ndarray, y_pred: np.ndarray, logger: logging.Logger
+    split: str,
+    y: np.ndarray,
+    y_pred: np.ndarray,
+    logger: logging.Logger,
+    multi_class: bool = False,
 ):
     """Log experiment metrics of a dataset split.
 
@@ -238,10 +249,11 @@ def log_exp_metrics(
         y: The true labels.
         y_pred: The predicted labels.
         logger: The logging instance.
+        multi-class: Whether the dataset is multi-class.
     """
 
     f1, accuracy, precision, recall = evaluate_prior_model_predictions(
-        y, y_pred
+        y, y_pred, multi_class
     )
 
     logger.info(f"Split: {split}")

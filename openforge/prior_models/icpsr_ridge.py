@@ -52,16 +52,15 @@ class RidgeClassifierTuningWrapper:
     def fit(self):
         self.clf.fit(self.X_train, self.y_train)
 
-    def predict(self, X: np.ndarray, threshold: float = 0.5):
-        y_pred = (self.predict_proba(X)[:, 1] >= threshold).astype(int)
+    def predict(self, X: np.ndarray):
+        y_pred = self.predict_proba(X).argmax(axis=1)
 
         return y_pred
 
     def predict_proba(self, X: np.ndarray):
         d = self.clf.decision_function(X)
-        d_2d = np.c_[-d, d]
 
-        return extmath.softmax(d_2d)
+        return extmath.softmax(d)
 
 
 if __name__ == "__main__":
@@ -117,7 +116,7 @@ if __name__ == "__main__":
 
         # Hyperparameter tuning
         tuning_engine = PriorModelTuningEngine(
-            config, prior_model_wrapper, hp_space
+            config, prior_model_wrapper, hp_space, multi_class=True
         )
         best_hp_config = tuning_engine.run()
 
@@ -150,23 +149,31 @@ if __name__ == "__main__":
     y_test = prior_model_wrapper.y_test
 
     y_train_pred = prior_model_wrapper.predict(X_train)
-    log_exp_metrics("training", y_train, y_train_pred, logger)
+    log_exp_metrics("training", y_train, y_train_pred, logger, multi_class=True)
 
     y_valid_pred = prior_model_wrapper.predict(X_valid)
-    log_exp_metrics("validation", y_valid, y_valid_pred, logger)
+    log_exp_metrics(
+        "validation", y_valid, y_valid_pred, logger, multi_class=True
+    )
 
     y_test_pred = prior_model_wrapper.predict(X_test)
-    log_exp_metrics("test", y_test, y_test_pred, logger)
+    log_exp_metrics("test", y_test, y_test_pred, logger, multi_class=True)
 
     # Add prediction confidence scores
     valid_df = prior_model_wrapper.valid_df
     test_df = prior_model_wrapper.test_df
 
     y_valid_proba = prior_model_wrapper.predict_proba(X_valid)
-    valid_df["positive_label_prediction_probability"] = y_valid_proba[:, 1]
+    valid_df["class_0_prediction_probability"] = y_valid_proba[:, 0]
+    valid_df["class_1_prediction_probability"] = y_valid_proba[:, 1]
+    valid_df["class_2_prediction_probability"] = y_valid_proba[:, 2]
+    valid_df["class_3_prediction_probability"] = y_valid_proba[:, 3]
 
     y_test_proba = prior_model_wrapper.predict_proba(X_test)
-    test_df["positive_label_prediction_probability"] = y_test_proba[:, 1]
+    test_df["class_0_prediction_probability"] = y_test_proba[:, 0]
+    test_df["class_1_prediction_probability"] = y_test_proba[:, 1]
+    test_df["class_2_prediction_probability"] = y_test_proba[:, 2]
+    test_df["class_3_prediction_probability"] = y_test_proba[:, 3]
 
     log_exp_records(y_valid, y_valid_pred, y_valid_proba, "validation", logger)
     log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)

@@ -60,10 +60,12 @@ class PriorModelTuningEngine:
         exp_config: ConfigParser,
         prior_model_wrapper: object,
         hp_space: ConfigurationSpace,
+        multi_class: bool = False,
     ):
         self.exp_config = exp_config
         self.prior_model_wrapper = prior_model_wrapper
         self.hp_space = hp_space
+        self.multi_class = multi_class
 
         self.optimizer = get_bo_optimizer(
             self.exp_config, self.hp_space, self.bo_target_function
@@ -82,7 +84,9 @@ class PriorModelTuningEngine:
         )
 
         f1_score, accuracy, _, _ = evaluate_prior_model_predictions(
-            self.prior_model_wrapper.y_valid, y_valid_pred
+            self.prior_model_wrapper.y_valid,
+            y_valid_pred,
+            multi_class=self.multi_class,
         )
 
         if self.exp_state.best_f1_score < f1_score:
