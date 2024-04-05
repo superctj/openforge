@@ -7,7 +7,6 @@ https://github.com/alex-bogatu/d3l/blob/main/d3l/utils/functions.py
 
 import gzip
 import os
-import random
 import re
 import shutil
 import unicodedata
@@ -19,7 +18,6 @@ import numpy as np
 
 from fasttext import load_model
 from nltk.corpus import stopwords
-from openforge.ARTS.helpers.mongodb_helper import readCSVFileWithTableID
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
