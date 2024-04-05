@@ -197,13 +197,6 @@ def create_pos_and_neg_instances(
                     set(reference_concept_col_values),
                     set(merged_concept_col_values),
                 )
-
-                logger.info(
-                    f"reference shape: {reference_concept_value_fasttext_signature.shape}"
-                )
-                logger.info(
-                    f"merged shape: {merged_concept_value_fasttext_signature.shape}"
-                )
                 value_fasttext_sim = cosine_similarity(
                     reference_concept_value_fasttext_signature,
                     merged_concept_value_fasttext_signature,
