@@ -5,17 +5,23 @@ from ConfigSpace import ConfigurationSpace
 from openforge.hp_optimization.bo_optimizer import get_bo_optimizer
 from openforge.utils.custom_logging import get_logger
 from openforge.utils.exp_tracker import ExperimentState
-from openforge.utils.mrf_common import evaluate_inference_results
+from openforge.utils.mrf_common import (
+    evaluate_inference_results,
+    evaluate_multi_class_inference_results,
+)
 from openforge.utils.prior_model_common import (
     evaluate_prior_model_predictions,
 )
 
 
 class TuningEngine:
-    def __init__(self, exp_config, mrf_wrapper, mrf_hp_space):
+    def __init__(
+        self, exp_config, mrf_wrapper, mrf_hp_space, multi_class=False
+    ):
         self.exp_config = exp_config
         self.mrf_wrapper = mrf_wrapper
         self.mrf_hp_space = mrf_hp_space
+        self.multi_class = multi_class
 
         self.optimizer = get_bo_optimizer(
             self.exp_config, self.mrf_hp_space, self.bo_target_function
@@ -30,9 +36,14 @@ class TuningEngine:
 
         mrf = self.mrf_wrapper.create_mrf(dict(mrf_hp_config))
         results = self.mrf_wrapper.run_inference(mrf, dict(mrf_hp_config))
-        f1_score, accuracy = evaluate_inference_results(
-            self.mrf_wrapper.prior_data, results
-        )
+        if not self.multi_class:
+            f1_score, accuracy, _, _ = evaluate_inference_results(
+                self.mrf_wrapper.prior_data, results
+            )
+        else:
+            f1_score, accuracy, _, _ = evaluate_multi_class_inference_results(
+                self.mrf_wrapper.prior_data, results
+            )
 
         if self.exp_state.best_f1_score < f1_score:
             self.exp_state.best_f1_score = f1_score
