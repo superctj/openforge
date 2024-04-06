@@ -12,10 +12,7 @@ from pgmax import fgraph, fgroup, infer, vgroup
 from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import TuningEngine
 from openforge.utils.custom_logging import create_custom_logger, get_logger
-from openforge.utils.mrf_common import (
-    PRIOR_CONSTANT,
-    evaluate_inference_results,
-)
+from openforge.utils.mrf_common import evaluate_inference_results
 from openforge.utils.util import fix_global_random_state, parse_config
 
 
@@ -120,7 +117,7 @@ class MRFWrapper:
         log_ternary_table = np.log(np.array(ternary_table))
 
         var_names = self.prior_data["relation_variable_name"].tolist()
-        variables = vgroup.VarDict(num_states=2, variable_names=var_names)
+        variables = vgroup.VarDict(num_states=4, variable_names=var_names)
 
         fg = fgraph.FactorGraph(variables)
 
@@ -133,25 +130,15 @@ class MRFWrapper:
             var = variables.__getitem__(var_name)
             variables_for_unary_factors.append([var])
 
-            pred_proba = row.positive_label_prediction_probability
-            # Get around the warning of dividing by zero encountered in log
-            if pred_proba == 1:
-                pred_proba = 1 - PRIOR_CONSTANT
-            elif pred_proba == 0:
-                pred_proba = PRIOR_CONSTANT
+            pred_proba = [
+                row.class_0_prediction_probability,
+                row.class_1_prediction_probability,
+                row.class_2_prediction_probability,
+                row.class_3_prediction_probability,
+            ]
 
-            prior = np.log(np.array([1 - pred_proba, pred_proba]))
+            prior = np.log(np.array(pred_proba))
             log_potentials.append(prior)
-
-            # Prior knowledge: if two labels are from the same vocabulary, they
-            # are not equivalent.
-            # label1_predicate = row.label_1.startswith("https")
-            # label2_predicate = row.label_2.startswith("https")
-
-            # if (label1_predicate and label2_predicate) or (
-            #     not label1_predicate and not label2_predicate
-            # ):
-            #     self.hard_evidence[var] = np.array([1, 0])
 
         unary_factor_group = fgroup.EnumFactorGroup(
             variables_for_factors=variables_for_unary_factors,
@@ -287,7 +274,9 @@ if __name__ == "__main__":
             )
 
         # Hyperparameter tuning
-        tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
+        tuning_engine = TuningEngine(
+            config, mrf_wrapper, hp_space, multi_class=True
+        )
         best_hp_config = tuning_engine.run()
     else:
         assert args.mode == "inference", (
