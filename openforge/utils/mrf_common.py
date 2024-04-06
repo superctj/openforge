@@ -119,17 +119,19 @@ def evaluate_multi_class_inference_results(
         y_prior.append(ml_pred)
 
         if log_predictions:
+            logger.info(f"Variable {var_name}:")
             logger.info(
-                f"Prior for variable {var_name}: ({ml_pred}, "
-                f"{prior_proba[ml_pred]:.2f})"
+                f"Prior prediction: ({ml_pred}, {prior_proba[ml_pred]:.2f})"
             )
-            logger.info(f"Posterior for variable {var_name}: {pred}")
-            logger.info(f"True label for variable {var_name}: {var_label}")
+            logger.info(f"Posterior prediction: {pred}")
+            logger.info(f"True label: {var_label}")
 
             if ml_pred != var_label:
                 logger.info("Prior prediction is incorrect.")
             if pred != row.relation_variable_label:
                 logger.info("Posterior prediction is incorrect.")
+
+    average_type = "macro"
 
     if log_predictions:
         logger.info("-" * 80)
@@ -137,12 +139,16 @@ def evaluate_multi_class_inference_results(
         logger.info(
             f"Prior test accuracy: {accuracy_score(y_true, y_prior):.2f}"
         )
-        logger.info(f"Prior F1 score: {f1_score(y_true, y_prior):.2f}")
-        logger.info(f"Prior precision: {precision_score(y_true, y_prior):.2f}")
-        logger.info(f"Prior recall: {recall_score(y_true, y_prior):.2f}")
+
+        prior_f1_score = f1_score(y_true, y_prior, average=average_type)
+        prior_precision = precision_score(y_true, y_prior, average=average_type)
+        prior_recall = recall_score(y_true, y_prior, average=average_type)
+
+        logger.info(f"Prior F1 score: {prior_f1_score:.2f}")
+        logger.info(f"Prior precision: {prior_precision:.2f}")
+        logger.info(f"Prior recall: {prior_recall:.2f}")
 
     mrf_accuracy = accuracy_score(y_true, y_pred)
-    average_type = "macro"
     mrf_f1_score = f1_score(y_true, y_pred, average=average_type)
     mrf_precision = precision_score(y_true, y_pred, average=average_type)
     mrf_recall = recall_score(y_true, y_pred, average=average_type)
