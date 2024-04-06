@@ -36,6 +36,7 @@ class TuningEngine:
 
         mrf = self.mrf_wrapper.create_mrf(dict(mrf_hp_config))
         results = self.mrf_wrapper.run_inference(mrf, dict(mrf_hp_config))
+
         if not self.multi_class:
             f1_score, accuracy, _, _ = evaluate_inference_results(
                 self.mrf_wrapper.prior_data, results
