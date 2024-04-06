@@ -12,7 +12,7 @@ from pgmax import fgraph, fgroup, infer, vgroup
 from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import TuningEngine
 from openforge.utils.custom_logging import create_custom_logger, get_logger
-from openforge.utils.mrf_common import evaluate_inference_results
+from openforge.utils.mrf_common import evaluate_multi_class_inference_results
 from openforge.utils.util import fix_global_random_state, parse_config
 
 
@@ -301,6 +301,6 @@ if __name__ == "__main__":
     test_mrf = test_mrf_wrapper.create_mrf(dict(best_hp_config))
     results = test_mrf_wrapper.run_inference(test_mrf, dict(best_hp_config))
 
-    evaluate_inference_results(
+    evaluate_multi_class_inference_results(
         test_mrf_wrapper.prior_data, results, log_predictions=True
     )
