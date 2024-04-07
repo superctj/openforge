@@ -6,6 +6,7 @@ import pandas as pd
 from valentine import valentine_match
 from valentine.algorithms import DistributionBased
 
+from openforge.ARTS.helpers.mongodb_helper import readCSVFileWithTableID
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.prior_model_common import log_exp_metrics
 
@@ -16,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--source_data",
         type=str,
-        default="/ssd/congtj/openforge/sotab_v2/artifact/sotab_v2_test_openforge_xlarge/test.csv",  # noqa: 501
+        default="/ssd/congtj/openforge/arts/artifact/top_40_nodes/training_prop_0.5/openforge_arts_test.csv",  # noqa: 501
         help="Path to the source data.",
     )
 
@@ -28,10 +29,17 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--num_rows",
+        type=int,
+        default=10000,
+        help="Maximum number of rows to read from source tables.",
+    )
+
+    parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/sotab_v2/ada",
-        help="Directory to store logs.",
+        default="/home/congtj/openforge/logs/arts/ada",
+        help="Directory to save logs.",
     )
 
     args = parser.parse_args()
@@ -49,21 +57,25 @@ if __name__ == "__main__":
     y_true, y_pred = [], []
 
     for row in df.itertuples():
-        table1_path = row.label_1_table_path
-        table2_path = row.label_2_table_path
+        table1_id = row.concept_1_table_id
+        table2_id = row.concept_2_table_id
 
-        table1 = pd.read_json(table1_path, compression="gzip", lines=True)
-        table1 = table1.astype(str)
-        table2 = pd.read_json(table2_path, compression="gzip", lines=True)
-        table2 = table2.astype(str)
+        table1 = readCSVFileWithTableID(table1_id, nrows=args.num_rows)
+        # table1 = table1.astype(str)
+        table2 = readCSVFileWithTableID(table2_id, nrows=args.num_rows)
+        # table2 = table2.astype(str)
 
-        column1 = table1.iloc[:, row.label_1_col_idx].to_frame()
-        column2 = table2.iloc[:, row.label_2_col_idx].to_frame()
+        column1 = table1[row.concept_1_col_name].to_frame()
+        column2 = table2[row.concept_2_col_name].to_frame()
 
-        column1.columns = [row.label_1_processed]
-        column2.columns = [row.label_2_processed]
+        column1.columns = [row.concept_1]
+        column2.columns = [row.concept_2]
 
-        matches = valentine_match(column1, column2, matcher)
+        try:
+            matches = valentine_match(column1, column2, matcher)
+        except ValueError as e:
+            logger.error(f"Error: {e}")
+            continue
 
         if matches:
             assert len(matches) == 1

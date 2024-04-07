@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 from valentine import valentine_match
-from valentine.algorithms import Coma
+from valentine.algorithms import DistributionBased
 
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.prior_model_common import log_exp_metrics
@@ -21,13 +21,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--use_instance",
-        type=int,
-        default=1,
-        help="Whether to use data instances in COMA matcher.",
-    )
-
-    parser.add_argument(
         "--threshold",
         type=float,
         default=0.5,
@@ -37,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/exps/sotab_v2_test_openforge_xlarge/coma",  # noqa: E501
+        default="/home/congtj/openforge/exps/sotab_v2_test_openforge_xlarge/ada",  # noqa: E501
         help="Directory to save logs.",
     )
 
@@ -51,7 +44,7 @@ if __name__ == "__main__":
     logger.info(f"{args}\n")
 
     df = pd.read_csv(args.source_data, delimiter=",", header=0)
-    matcher = Coma(use_instances=bool(args.use_instance), java_xmx="16g")
+    matcher = DistributionBased()
 
     y_true, y_pred = [], []
 
