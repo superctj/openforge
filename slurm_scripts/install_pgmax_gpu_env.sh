@@ -13,7 +13,6 @@
 # Stop on errors
 set -Eeuo pipefail
 
-# conda create -n pgmax-gpu python=3.10
 source /home/congtj/.bash_profile
 conda create -n pgmax-gpu python=3.10
 conda activate pgmax-gpu
