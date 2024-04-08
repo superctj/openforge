@@ -13,14 +13,14 @@ from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.util import fix_global_random_state
 
 TERNARY_TABLE = [
-    0.4459630461679717,
-    0.5260795123585992,
-    0.5260795123585992,
+    0.9,
+    0.7,
+    0.7,
     1e-9,
-    0.5260795123585992,
+    0.7,
     1e-9,
     1e-9,
-    0.43414671350935646,
+    0.5,
 ]
 log_ternary_table = np.log(np.array(TERNARY_TABLE))
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/home/congtj/openforge/logs/synthesized_mrf/pgmax_lbp",  # noqa: E501
+        default="/home/congtj/openforge/logs/synthesized_mrf/pgmax_gpu_lbp",
         help="Directory to save logs.",
     )
 
@@ -123,8 +123,9 @@ if __name__ == "__main__":
         var = variables.__getitem__(var_name)
         variables_for_unary_factors.append([var])
 
-        confdc_score = random.random()
-        prior = np.log(np.array([1 - confdc_score, confdc_score]))
+        # confdc_score = random.random()
+        # prior = np.log(np.array([1 - confdc_score, confdc_score]))
+        prior = np.log(np.array([0.9, 0.1]))
         log_potentials.append(prior)
 
     unary_factor_group = fgroup.EnumFactorGroup(
