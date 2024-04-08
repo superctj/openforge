@@ -8,6 +8,7 @@ from openforge.utils.exp_tracker import ExperimentState
 from openforge.utils.mrf_common import (
     evaluate_inference_results,
     evaluate_multi_class_inference_results,
+    evaluate_fixed_prior_multi_class_inference_results,
 )
 from openforge.utils.prior_model_common import (
     evaluate_prior_model_predictions,
@@ -42,8 +43,13 @@ class TuningEngine:
                 self.mrf_wrapper.prior_data, results
             )
         else:
-            f1_score, accuracy, _, _ = evaluate_multi_class_inference_results(
-                self.mrf_wrapper.prior_data, results
+            # f1_score, accuracy, _, _ = evaluate_multi_class_inference_results(
+            #     self.mrf_wrapper.prior_data, results
+            # )
+            f1_score, accuracy, _, _ = (
+                evaluate_fixed_prior_multi_class_inference_results(
+                    self.mrf_wrapper.prior_data, results
+                )
             )
 
         if self.exp_state.best_f1_score < f1_score:
