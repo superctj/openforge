@@ -10,11 +10,8 @@
 #SBATCH --account=jag0
 #SBATCH --output=/home/congtj/openforge/exps/openforge_icpsr/ridge_pgmax_gpu_lbp/outputs.log
 
-# Stop on errors
-set -Eeuo pipefail
-
-source ~/.conda/envs/openforge-pgmax-gpu/bin/activate
-conda activate openforge-pgmax-gpu
+source ~/.bash_profile
+conda activate pgmax-gpu
 
 python ./openforge/mrf_inference/pgmax_lbp_icpsr.py \
     --config_path=./openforge/mrf_inference/tuning_exp_configs/icpsr_ridge_pgmax_lbp.ini \
