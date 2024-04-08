@@ -160,3 +160,47 @@ def evaluate_multi_class_inference_results(
         logger.info(f"MRF recall: {mrf_recall:.2f}")
 
     return mrf_f1_score, mrf_accuracy, mrf_precision, mrf_recall
+
+
+def evaluate_fixed_prior_multi_class_inference_results(
+    prior_data: pd.DataFrame, results: dict, log_predictions: bool = False
+):
+    if log_predictions:
+        logger = get_logger()
+
+    y_true, y_pred = [], []
+
+    for row in prior_data.itertuples():
+        if log_predictions:
+            logger.info("-" * 80)
+
+        var_name = row.relation_variable_name
+        var_label = int(row.relation_variable_label)
+        pred = int(results[var_name])
+
+        y_true.append(row.relation_variable_label)
+        y_pred.append(pred)
+
+        if log_predictions:
+            logger.info(f"Variable {var_name}:")
+            logger.info(f"Posterior prediction: {pred}")
+            logger.info(f"True label: {var_label}")
+
+    average_type = "macro"
+
+    if log_predictions:
+        logger.info("-" * 80)
+        logger.info(f"Number of test instances: {len(prior_data)}")
+
+    mrf_accuracy = accuracy_score(y_true, y_pred)
+    mrf_f1_score = f1_score(y_true, y_pred, average=average_type)
+    mrf_precision = precision_score(y_true, y_pred, average=average_type)
+    mrf_recall = recall_score(y_true, y_pred, average=average_type)
+
+    if log_predictions:
+        logger.info(f"MRF test accuracy: {mrf_accuracy:.2f}")
+        logger.info(f"MRF F1 score: {mrf_f1_score:.2f}")
+        logger.info(f"MRF precision: {mrf_precision:.2f}")
+        logger.info(f"MRF recall: {mrf_recall:.2f}")
+
+    return mrf_f1_score, mrf_accuracy, mrf_precision, mrf_recall
