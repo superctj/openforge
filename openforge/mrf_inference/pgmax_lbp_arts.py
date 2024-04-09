@@ -78,7 +78,7 @@ class MRFWrapper:
 
         fg = fgraph.FactorGraph(variables)
         end = time.time()
-        logger.info(
+        self.logger.info(
             f"Time to create and add MRF variables: {end-start:.2f} seconds"
         )
 
@@ -110,7 +110,7 @@ class MRFWrapper:
         fg.add_factors(unary_factor_group)
 
         end = time.time()
-        logger.info(f"Time to add unary factors: {end-start:.2f} seconds")
+        self.logger.info(f"Time to add unary factors: {end-start:.2f} seconds")
 
         # add ternary factors
         start = time.time()
