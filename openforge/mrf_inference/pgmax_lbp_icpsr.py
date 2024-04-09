@@ -21,6 +21,8 @@ TERNARY_FACTOR_CONFIG = np.array(
     [config for config in product(range(4), repeat=3)]
 )
 
+# PRIOR_REG_CONSTANT = 0.1
+
 
 class MRFWrapper:
     def __init__(self, prior_filepath: str, **kwargs):
@@ -130,6 +132,34 @@ class MRFWrapper:
             var = variables.__getitem__(var_name)
             variables_for_unary_factors.append([var])
 
+            # if row.class_0_prediction_probability >= 0.9:
+            #     pred_proba = [
+            #         row.class_0_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #         row.class_1_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_2_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_3_prediction_probability + PRIOR_REG_CONSTANT,
+            #     ]
+            # elif row.class_1_prediction_probability >= 0.9:
+            #     pred_proba = [
+            #         row.class_0_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_1_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #         row.class_2_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_3_prediction_probability + PRIOR_REG_CONSTANT,
+            #     ]
+            # elif row.class_2_prediction_probability >= 0.9:
+            #     pred_proba = [
+            #         row.class_0_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_1_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_2_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #         row.class_3_prediction_probability + PRIOR_REG_CONSTANT,
+            #     ]
+            # elif row.class_3_prediction_probability >= 0.9:
+            #     pred_proba = [
+            #         row.class_0_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_1_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_2_prediction_probability + PRIOR_REG_CONSTANT,
+            #         row.class_3_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #     ]
             pred_proba = [
                 row.class_0_prediction_probability,
                 row.class_1_prediction_probability,
