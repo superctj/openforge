@@ -5,7 +5,7 @@ from ConfigSpace import ConfigurationSpace
 from smac import BlackBoxFacade as BBFacade
 from smac import HyperparameterOptimizationFacade as HPOFacade
 from smac import Scenario
-from smac.initial_design import LatinHypercubeInitialDesign
+from smac.initial_design import RandomInitialDesign
 
 
 def get_bo_optimizer(
@@ -27,7 +27,13 @@ def get_bo_optimizer(
         seed=exp_config.getint("hp_optimization", "random_seed"),
     )
 
-    initial_design = LatinHypercubeInitialDesign(
+    # initial_design = LatinHypercubeInitialDesign(
+    #     scenario,
+    #     n_configs_per_hyperparameter=10,
+    #     max_ratio=1,
+    #     seed=exp_config.getint("hp_optimization", "random_seed"),
+    # )
+    initial_design = RandomInitialDesign(
         scenario,
         n_configs_per_hyperparameter=10,
         max_ratio=1,
