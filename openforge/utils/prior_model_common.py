@@ -208,7 +208,7 @@ def load_openforge_icpsr_benchmark(
 
 
 def load_openforge_arts_split(
-    split_filepath: str, logger: logging.Logger
+    split_filepath: str, logger: logging.Logger, multi_class: bool = False
 ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """Load a split of an OpenForge-ARTS dataset.
 
@@ -245,13 +245,19 @@ def load_openforge_arts_split(
 
     logger.info(f"X shape: {X.shape}")
     logger.info(f"y shape: {y.shape}")
-    logger.info(f"Number of positive instances: {np.sum(y == 1)}\n")
+
+    if multi_class:
+        logger.info(f"Number of null instances: {np.sum(y == 0)}\n")
+        logger.info(f"Number of equivalent instances: {np.sum(y == 1)}\n")
+        logger.info(f"Number of hypernymy instances: {np.sum(y == 2)}\n")
+    else:
+        logger.info(f"Number of positive instances: {np.sum(y == 1)}\n")
 
     return X, y, df
 
 
 def load_openforge_arts_benchmark(
-    data_dir: str, logger: logging.Logger
+    data_dir: str, logger: logging.Logger, multi_class: bool = False
 ) -> tuple[
     np.ndarray,
     np.ndarray,
@@ -280,16 +286,18 @@ def load_openforge_arts_benchmark(
 
     logger.info("Loading training split...")
     X_train, y_train, train_df = load_openforge_arts_split(
-        train_filepath, logger
+        train_filepath, logger, multi_class
     )
 
     logger.info("Loading validation split...")
     X_valid, y_valid, valid_df = load_openforge_arts_split(
-        valid_filepath, logger
+        valid_filepath, logger, multi_class
     )
 
     logger.info("Loading test split...")
-    X_test, y_test, test_df = load_openforge_arts_split(test_filepath, logger)
+    X_test, y_test, test_df = load_openforge_arts_split(
+        test_filepath, logger, multi_class
+    )
 
     return (
         X_train,
