@@ -118,15 +118,21 @@ class MRFWrapper:
         ]
         log_ternary_table = np.log(np.array(ternary_table))
 
+        start = time.time()
         var_names = self.prior_data["relation_variable_name"].tolist()
         variables = vgroup.VarDict(num_states=4, variable_names=var_names)
 
         fg = fgraph.FactorGraph(variables)
+        end = time.time()
+        logger.info(
+            f"Time to create and add MRF variables: {end-start:.2f} seconds"
+        )
 
         variables_for_unary_factors = []
         log_potentials = []
 
         # add unary factors
+        start = time.time()
         for row in self.prior_data.itertuples():
             var_name = row.relation_variable_name
             var = variables.__getitem__(var_name)
@@ -180,6 +186,9 @@ class MRFWrapper:
             log_potentials=np.array(log_potentials),
         )
         fg.add_factors(unary_factor_group)
+
+        end = time.time()
+        logger.info(f"Time to add unary factors: {end-start:.2f} seconds")
 
         # add ternary factors
         start = time.time()

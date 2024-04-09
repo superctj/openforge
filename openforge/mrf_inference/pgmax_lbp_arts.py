@@ -72,15 +72,21 @@ class MRFWrapper:
         ]
         log_ternary_table = np.log(np.array(ternary_table))
 
+        start = time.time()
         var_names = self.prior_data["relation_variable_name"].tolist()
         variables = vgroup.VarDict(num_states=2, variable_names=var_names)
 
         fg = fgraph.FactorGraph(variables)
+        end = time.time()
+        logger.info(
+            f"Time to create and add MRF variables: {end-start:.2f} seconds"
+        )
 
         variables_for_unary_factors = []
         log_potentials = []
 
         # add unary factors
+        start = time.time()
         for row in self.prior_data.itertuples():
             var_name = row.relation_variable_name
             var = variables.__getitem__(var_name)
@@ -102,6 +108,9 @@ class MRFWrapper:
             log_potentials=np.array(log_potentials),
         )
         fg.add_factors(unary_factor_group)
+
+        end = time.time()
+        logger.info(f"Time to add unary factors: {end-start:.2f} seconds")
 
         # add ternary factors
         start = time.time()
@@ -239,13 +248,14 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            "damping": 0.7858213721344507,
-            "num_iters": 921,
-            "temperature": 0.9910111614267442,
-            "alpha": 0.5768611571269355,
-            "beta": 0.5855811670070769,
-            "gamma": 0.016516056183874597,
-            "delta": 0.588351726474382,
+            "alpha": 0.7617447305887645,
+            "beta": 0.8135030398598299,
+            "damping": 0.0004206379069188748,
+            "delta": 0.78503233475983,
+            "epsilon": 0.6968990974417293,
+            "gamma": 0.3327838934430677,
+            "num_iters": 993,
+            "temperature": 0.8997733512520086,
         }
 
     test_mrf_wrapper = MRFWrapper(
