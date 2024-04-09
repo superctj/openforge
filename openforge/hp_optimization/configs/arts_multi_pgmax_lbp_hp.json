@@ -1,0 +1,122 @@
+[
+    {
+        "name": "theta_1",
+        "short_descr": "potential value of config [0, 0, 0]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_2",
+        "short_descr": "potential value of config [0, 0, 1]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_3",
+        "short_descr": "potential value of config [0, 0, 2]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_4",
+        "short_descr": "potential value of config [0, 1, 0]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_5",
+        "short_descr": "potential value of config [0, 2, 0]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_6",
+        "short_descr": "potential value of config [1, 0, 0]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_7",
+        "short_descr": "potential value of config [1, 1, 1]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_8",
+        "short_descr": "potential value of config [1, 2, 2]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_9",
+        "short_descr": "potential value of config [2, 0, 0]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_10",
+        "short_descr": "potential value of config [2, 0, 2]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_11",
+        "short_descr": "potential value of config [2, 1, 2]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "theta_12",
+        "short_descr": "potential value of config [2, 2, 2]",
+        "type": "float",
+        "min_val": 1e-9,
+        "max_val": 1,
+        "default_val": 1
+    },
+    {
+        "name": "num_iters",
+        "short_descr": "number of iterations for loopy belief propagation",
+        "type": "int",
+        "min_val": 100,
+        "max_val": 1000,
+        "default_val": 200
+    },
+    {
+        "name": "damping",
+        "short_descr": "damping factor for loopy belief propagation",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default_val": 0.5
+    },
+    {
+        "name": "temperature",
+        "short_descr": "temperature for loopy belief propagation",
+        "type": "float",
+        "min_val": 0,
+        "max_val": 1,
+        "default_val": 0
+    }
+]
