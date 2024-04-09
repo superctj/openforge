@@ -3,8 +3,11 @@ import logging
 import os
 import pickle
 
+from collections import Counter
+
 import numpy as np
 
+from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import RidgeClassifier
 from sklearn.utils import extmath
 
@@ -22,8 +25,8 @@ from openforge.utils.util import fix_global_random_state, parse_config
 class RidgeClassifierTuningWrapper:
     def __init__(self, data_dir: str, random_seed: int, logger: logging.Logger):
         (
-            self.X_train,
-            self.y_train,
+            X_train,
+            y_train,
             self.X_valid,
             self.y_valid,
             self.X_test,
@@ -32,6 +35,14 @@ class RidgeClassifierTuningWrapper:
             self.valid_df,
             self.test_df,
         ) = load_openforge_icpsr_benchmark(data_dir, logger)
+
+        smote = SMOTE(
+            random_state=random_seed,
+        )
+        self.X_train, self.y_train = smote.fit_resample(X_train, y_train)
+        logger.info("Use SMOTE to oversample the training data.")
+        logger.info(sorted(Counter(self.y_train).items()))
+
         self.clf = None
         self.random_seed = random_seed
 
