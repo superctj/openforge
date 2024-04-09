@@ -1,4 +1,4 @@
-name: openforge-pgmax-cpu
+name: pgmax-cpu
 channels:
   - anaconda
   - conda-forge
@@ -313,4 +313,3 @@ dependencies:
       - widgetsnbextension==4.0.10
       - wrapt==1.14.1
       - zict==3.0.0
-prefix: /home/congtj/miniconda3/envs/openforge-pgmax-cpu
