@@ -134,7 +134,8 @@ class MRFWrapper:
 
             # if row.class_0_prediction_probability >= 0.9:
             #     pred_proba = [
-            #         row.class_0_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #         row.class_0_prediction_probability -
+            # PRIOR_REG_CONSTANT * 3,
             #         row.class_1_prediction_probability + PRIOR_REG_CONSTANT,
             #         row.class_2_prediction_probability + PRIOR_REG_CONSTANT,
             #         row.class_3_prediction_probability + PRIOR_REG_CONSTANT,
@@ -142,7 +143,8 @@ class MRFWrapper:
             # elif row.class_1_prediction_probability >= 0.9:
             #     pred_proba = [
             #         row.class_0_prediction_probability + PRIOR_REG_CONSTANT,
-            #         row.class_1_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #         row.class_1_prediction_probability -
+            # PRIOR_REG_CONSTANT * 3,
             #         row.class_2_prediction_probability + PRIOR_REG_CONSTANT,
             #         row.class_3_prediction_probability + PRIOR_REG_CONSTANT,
             #     ]
@@ -150,7 +152,8 @@ class MRFWrapper:
             #     pred_proba = [
             #         row.class_0_prediction_probability + PRIOR_REG_CONSTANT,
             #         row.class_1_prediction_probability + PRIOR_REG_CONSTANT,
-            #         row.class_2_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #         row.class_2_prediction_probability -
+            # PRIOR_REG_CONSTANT * 3,
             #         row.class_3_prediction_probability + PRIOR_REG_CONSTANT,
             #     ]
             # elif row.class_3_prediction_probability >= 0.9:
@@ -158,7 +161,8 @@ class MRFWrapper:
             #         row.class_0_prediction_probability + PRIOR_REG_CONSTANT,
             #         row.class_1_prediction_probability + PRIOR_REG_CONSTANT,
             #         row.class_2_prediction_probability + PRIOR_REG_CONSTANT,
-            #         row.class_3_prediction_probability - PRIOR_REG_CONSTANT * 3,
+            #         row.class_3_prediction_probability -
+            # PRIOR_REG_CONSTANT * 3,
             #     ]
             pred_proba = [
                 row.class_0_prediction_probability,
