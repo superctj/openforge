@@ -299,9 +299,12 @@ def create_relation_instances(
 
             relation_variable_name = f"R_{i+1}-{j+1}"
             if (concept_i, concept_j) in conceptpair_relation_map:
-                relation_variable_label = conceptpair_relation_map[
-                    (concept_i, concept_j)
-                ].value
+                if bool(args.only_hypernymy):
+                    relation_variable_label = 1
+                else:
+                    relation_variable_label = conceptpair_relation_map[
+                        (concept_i, concept_j)
+                    ].value
             else:
                 relation_variable_label = 0
 
