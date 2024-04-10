@@ -6,8 +6,8 @@ import pymongo
 
 
 ROOT_DOWNLOAD = "/home/jjxing/ssd/new_project/data"
-SELECTED_DATA_DIR = "/ssd/congtj/openforge/arts/artifact/top_40_nodes/training_prop_0.5"  # noqa: E501
-DESTINATION_DIR = "/ssd/congtj/openforge/arts/nyc_selected_tables"
+SELECTED_DATA_DIR = "/ssd/congtj/openforge/arts/artifact/multi_relations_top_11_nodes/training_prop_0.5"  # "/ssd/congtj/openforge/arts/artifact/top_40_nodes/training_prop_0.5"  # noqa: E501
+DESTINATION_DIR = "/ssd/congtj/openforge/arts/multi_relation_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/nyc_selected_tables" # noqa: E501
 EXIST_TABLE_IDS = set()
 
 
@@ -60,5 +60,6 @@ if __name__ == "__main__":
     data_gov_csv_file_col = data_gov_mongo["csvfile"]
 
     for split in os.listdir(SELECTED_DATA_DIR):
-        split_filepath = os.path.join(SELECTED_DATA_DIR, split)
-        copy_tables_from_split(split_filepath, data_gov_csv_file_col)
+        if split.endswith(".csv"):
+            split_filepath = os.path.join(SELECTED_DATA_DIR, split)
+            copy_tables_from_split(split_filepath, data_gov_csv_file_col)
