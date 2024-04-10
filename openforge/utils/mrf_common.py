@@ -112,7 +112,7 @@ def evaluate_multi_class_inference_results(
                 row.class_0_prediction_probability,
                 row.class_1_prediction_probability,
                 row.class_2_prediction_probability,
-                row.class_3_prediction_probability,
+                # row.class_3_prediction_probability,
             ]
         )
         ml_pred = prior_proba.argmax()
