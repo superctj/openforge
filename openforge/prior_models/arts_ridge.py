@@ -5,6 +5,7 @@ import pickle
 
 import numpy as np
 
+# from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import RidgeClassifier
 from sklearn.utils import extmath
 
@@ -34,6 +35,14 @@ class RidgeClassifierTuningWrapper:
         ) = load_openforge_arts_benchmark(data_dir, logger)
         self.clf = None
         self.random_seed = random_seed
+
+        # smote = SMOTE(
+        #     random_state=random_seed,
+        # )
+        # self.X_train, self.y_train = smote.fit_resample(
+        #     self.X_train, self.y_train
+        # )
+        # logger.info("Use SMOTE to oversample the training data.")
 
     def create_default_model(self):
         self.clf = RidgeClassifier(
