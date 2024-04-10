@@ -50,16 +50,23 @@ def collect_concept_relations(split_nodes: list):
     concept_collist_map = {}
 
     for level_1_node in split_nodes:
+        if str(level_1_node) == "borough":
+            continue
+
         assert str(level_1_node) == level_1_node.texts[0]
         logger.info(f"\nLevel 1 node: {str(level_1_node)}")
 
-        for level_1_concept in level_1_node.texts:
+        for level_1_concept in level_1_node.texts[:1]:
+            level_1_concept = level_1_concept.lower()
+
             for level_2_node in level_1_node.children[:10]:
                 assert str(level_2_node) == level_2_node.texts[0]
                 logger.info(f"Level 2 node: {str(level_2_node)}")
 
                 # Collect hypernymy relations
                 for level_2_concept in level_2_node.texts:
+                    level_2_concept = level_2_concept.lower()
+
                     logger.info(
                         f"Hypernymy concepts: ({level_1_concept}, "
                         f"{level_2_concept})"
@@ -170,7 +177,10 @@ def create_relation_instances(
             )
             continue
 
-        for j, concept_j in enumerate(concepts[i + 1 :]):
+        for j, concept_j in enumerate(concepts):
+            if j <= i:
+                continue
+
             (
                 concept_j_name_qgram_signature,
                 concept_j_name_fasttext_signature,
@@ -285,7 +295,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_head_nodes",
         type=int,
-        default=10,
+        default=11,
         help="Number of head nodes to consider.",
     )
 
