@@ -64,11 +64,11 @@ class MRFWrapper:
             mrf_hp_config["theta_1"],  # 0, 0, 0
             mrf_hp_config["theta_2"],  # 0, 0, 1
             mrf_hp_config["theta_3"],  # 0, 1, 0
-            1e-9,  # 0, 1, 1
+            1e-9,  # 0, 1, 1 (dataset semantics)
             mrf_hp_config["theta_4"],  # 1, 0, 0
             mrf_hp_config["theta_5"],  # 1, 0, 1
-            1e-9,  # 1, 1, 0
-            mrf_hp_config["theta_6"],  # 1, 1, 1
+            1e-9,  # 1, 1, 0 (invalid assignment)
+            1e-9,  # 1, 1, 1 (dataset semantics)
         ]
         log_ternary_table = np.log(np.array(ternary_table))
 
@@ -125,8 +125,8 @@ class MRFWrapper:
 
         for combo in ternary_combos:
             var1 = variables.__getitem__(f"R_{combo[0]}-{combo[1]}")
-            var2 = variables.__getitem__(f"R_{combo[0]}-{combo[2]}")
-            var3 = variables.__getitem__(f"R_{combo[1]}-{combo[2]}")
+            var2 = variables.__getitem__(f"R_{combo[1]}-{combo[2]}")
+            var3 = variables.__getitem__(f"R_{combo[0]}-{combo[2]}")
             variables_for_ternary_factors.append([var1, var2, var3])
 
         ternary_factor_group = fgroup.EnumFactorGroup(
@@ -248,13 +248,13 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            "alpha": 0.7617447305887645,
-            "beta": 0.8135030398598299,
-            "damping": 0.0004206379069188748,
-            "delta": 0.78503233475983,
-            "epsilon": 0.6968990974417293,
-            "gamma": 0.3327838934430677,
+            "theta_1": 0.7617447305887645,
+            "theta_2": 0.8135030398598299,
+            "theta_3": 0.0004206379069188748,
+            "theta_4": 0.78503233475983,
+            "theta_5": 0.6968990974417293,
             "num_iters": 993,
+            "damping": 0.5,
             "temperature": 0.8997733512520086,
         }
 
