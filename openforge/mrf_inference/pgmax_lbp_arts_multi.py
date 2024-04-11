@@ -69,16 +69,16 @@ class MRFWrapper:
             1e-9,  # 1, 1, 2 (invalid)
             1e-9,  # 1, 2, 0 (invalid)
             1e-9,  # 1, 2, 1 (invalid)
-            mrf_hp_config["theta_8"],  # 1, 2, 2
+            mrf_hp_config["theta_8"],  # 1, 2, 2 (dataset semantics)
             mrf_hp_config["theta_9"],  # 2, 0, 0
             1e-9,  # 2, 0, 1 (invalid)
             mrf_hp_config["theta_10"],  # 2, 0, 2
             1e-9,  # 2, 1, 0 (invalid)
             1e-9,  # 2, 1, 1 (invalid)
             mrf_hp_config["theta_11"],  # 2, 1, 2
-            1e-9,  # 2, 2, 0
-            1e-9,  # 2, 2, 1
-            mrf_hp_config["theta_12"],  # 2, 2, 2
+            1e-9,  # 2, 2, 0 (invalid)
+            1e-9,  # 2, 2, 1 (invalid)
+            mrf_hp_config["theta_12"],  # 2, 2, 2 (dataset semantics)
         ]
         log_ternary_table = np.log(np.array(ternary_table))
 
@@ -100,24 +100,23 @@ class MRFWrapper:
 
             variables_for_unary_factors.append([var])
 
-            if row.class_0_prediction_probability == 1:
-                pred_proba = [
-                    row.class_0_prediction_probability - PRIOR_CONSTANT,
-                    row.class_1_prediction_probability + PRIOR_CONSTANT / 2,
-                    row.class_2_prediction_probability + PRIOR_CONSTANT / 2,
-                ]
-            elif row.class_1_prediction_probability == 1:
-                pred_proba = [
-                    row.class_0_prediction_probability + PRIOR_CONSTANT / 2,
-                    row.class_1_prediction_probability - PRIOR_CONSTANT,
-                    row.class_2_prediction_probability + PRIOR_CONSTANT / 2,
-                ]
-            elif row.class_2_prediction_probability == 1:
-                pred_proba = [
-                    row.class_0_prediction_probability + PRIOR_CONSTANT / 2,
-                    row.class_1_prediction_probability + PRIOR_CONSTANT / 2,
-                    row.class_2_prediction_probability - PRIOR_CONSTANT,
-                ]
+            class_0_pred_proba = row.class_0_prediction_probability
+            class_1_pred_proba = row.class_1_prediction_probability
+            class_2_pred_proba = row.class_2_prediction_probability
+
+            # Avoid log(0) by adding a small constant
+            if class_0_pred_proba == 0:
+                class_0_pred_proba = PRIOR_CONSTANT
+            if class_1_pred_proba == 0:
+                class_1_pred_proba = PRIOR_CONSTANT
+            if class_2_pred_proba == 0:
+                class_2_pred_proba = PRIOR_CONSTANT
+
+            pred_proba = [
+                class_0_pred_proba,
+                class_1_pred_proba,
+                class_2_pred_proba,
+            ]
 
             prior = np.log(np.array(pred_proba))
             log_potentials.append(prior)
