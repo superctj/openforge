@@ -53,112 +53,79 @@ MRFEntry = make_dataclass(
 )
 
 
-def collect_concept_relations(split_nodes: list, only_hypernymy: bool = False):
-    concepts = set()
+def collect_concept_relations(split_nodes: list):
+    concepts = []
     conceptpair_relation_map = {}
     concept_collist_map = {}
 
     for level_1_node in split_nodes:
-        assert str(level_1_node) == level_1_node.texts[0]
-        logger.info(f"\nLevel 1 node: {str(level_1_node)}")
+        if str(level_1_node) == "borough":
+            continue
 
-        for i, level_1_concept in enumerate(level_1_node.texts):
-            # Collect equivalent relations
-            if not only_hypernymy:
-                for level_1_merged_concept in level_1_node.texts[i + 1 :]:
-                    logger.info(
-                        f"Equivalent concepts: ({level_1_concept}, "
-                        f"{level_1_merged_concept})"
+        level_1_concept = str(level_1_node)
+        assert level_1_concept == level_1_node.texts[0]
+        logger.info(f"\nLevel 1 node: {level_1_concept}")
+
+        for level_2_node in level_1_node.children:
+            assert str(level_2_node) == level_2_node.texts[0]
+
+            logger.info(f"Level 2 node: {str(level_2_node)}")
+
+            # Collect hypernymy relations
+            for level_2_concept in level_2_node.texts:
+                logger.info(
+                    f"Hypernymy concepts: ({level_1_concept}, "
+                    f"{level_2_concept})"
+                )
+
+                if level_1_concept not in concepts:
+                    concepts.append(level_1_concept)
+                if level_2_concept not in concepts:
+                    concepts.append(level_2_concept)
+
+                conceptpair_relation_map[(level_1_concept, level_2_concept)] = (
+                    RelationType.HYPER
+                )
+
+                if level_1_concept not in concept_collist_map:
+                    concept_collist_map[level_1_concept] = (
+                        level_1_node.text_to_tbl_column_matched[level_1_concept]
                     )
 
-                    concepts.add(level_1_concept)
-                    concepts.add(level_1_merged_concept)
-
-                    conceptpair_relation_map[
-                        (level_1_concept, level_1_merged_concept)
-                    ] = RelationType.EQUIV
-
-                    if level_1_concept not in concept_collist_map:
-                        concept_collist_map[level_1_concept] = (
-                            level_1_node.text_to_tbl_column_matched[
-                                level_1_concept
-                            ]
-                        )
-
-                    if level_1_merged_concept not in concept_collist_map:
-                        concept_collist_map[level_1_merged_concept] = (
-                            level_1_node.text_to_tbl_column_matched[
-                                level_1_merged_concept
-                            ]
-                        )
-
-            for level_2_node in level_1_node.children[:10]:
-                assert str(level_2_node) == level_2_node.texts[0]
-
-                logger.info(f"Level 2 node: {str(level_2_node)}")
-                # logger.info(f"Level 2 merged concepts: {level_2_node.texts}")
-
-                # Collect equivalent relations
-                if not only_hypernymy:
-                    for j, level_2_concept in enumerate(level_2_node.texts):
-                        for level_2_merged_concept in level_2_node.texts[
-                            j + 1 :
-                        ]:
-                            logger.info(
-                                f"Equivalent concepts: ({level_2_concept}, "
-                                f"{level_2_merged_concept})"
-                            )
-
-                            concepts.add(level_2_concept)
-                            concepts.add(level_2_merged_concept)
-
-                            conceptpair_relation_map[
-                                (level_2_concept, level_2_merged_concept)
-                            ] = RelationType.EQUIV
-
-                            if level_2_concept not in concept_collist_map:
-                                concept_collist_map[level_2_concept] = (
-                                    level_2_node.text_to_tbl_column_matched[
-                                        level_2_concept
-                                    ]
-                                )
-
-                        if level_2_merged_concept not in concept_collist_map:
-                            concept_collist_map[level_2_merged_concept] = (
-                                level_2_node.text_to_tbl_column_matched[
-                                    level_2_merged_concept
-                                ]
-                            )
-
-                # Collect hypernymy relations
-                for level_2_concept in level_2_node.texts:
-                    logger.info(
-                        f"Hypernymy concepts: ({level_1_concept}, "
-                        f"{level_2_concept})"
+                if level_2_concept not in concept_collist_map:
+                    concept_collist_map[level_2_concept] = (
+                        level_2_node.text_to_tbl_column_matched[level_2_concept]
                     )
 
-                    concepts.add(level_1_concept)
-                    concepts.add(level_2_concept)
+        # Collect equivalent relations
+        for i, level_2_concept in enumerate(level_2_node.texts):
+            for level_2_merged_concept in level_2_node.texts[i + 1 :]:
+                logger.info(
+                    f"Equivalent concepts: ({level_2_concept}, "
+                    f"{level_2_merged_concept})"
+                )
 
-                    conceptpair_relation_map[
-                        (level_1_concept, level_2_concept)
-                    ] = RelationType.HYPER
+                if level_2_concept not in concepts:
+                    concepts.append(level_2_concept)
+                if level_2_merged_concept not in concepts:
+                    concepts.append(level_2_merged_concept)
 
-                    if level_1_concept not in concept_collist_map:
-                        concept_collist_map[level_1_concept] = (
-                            level_1_node.text_to_tbl_column_matched[
-                                level_1_concept
-                            ]
-                        )
+                conceptpair_relation_map[
+                    (level_2_concept, level_2_merged_concept)
+                ] = RelationType.EQUIV
 
-                    if level_2_concept not in concept_collist_map:
-                        concept_collist_map[level_2_concept] = (
-                            level_2_node.text_to_tbl_column_matched[
-                                level_2_concept
-                            ]
-                        )
+                if level_2_concept not in concept_collist_map:
+                    concept_collist_map[level_2_concept] = (
+                        level_2_node.text_to_tbl_column_matched[level_2_concept]
+                    )
 
-    concepts = list(concepts)
+                if level_2_merged_concept not in concept_collist_map:
+                    concept_collist_map[level_2_merged_concept] = (
+                        level_2_node.text_to_tbl_column_matched[
+                            level_2_merged_concept
+                        ]
+                    )
+
     logger.info(f"Number of concepts: {len(concepts)}")
 
     return concepts, conceptpair_relation_map, concept_collist_map
@@ -248,7 +215,10 @@ def create_relation_instances(
             )
             continue
 
-        for j, concept_j in enumerate(concepts[i + 1 :]):
+        for j, concept_j in enumerate(concepts):
+            if j <= i:
+                continue
+
             (
                 concept_j_name_qgram_signature,
                 concept_j_name_fasttext_signature,
@@ -299,12 +269,9 @@ def create_relation_instances(
 
             relation_variable_name = f"R_{i+1}-{j+1}"
             if (concept_i, concept_j) in conceptpair_relation_map:
-                if bool(args.only_hypernymy):
-                    relation_variable_label = 1
-                else:
-                    relation_variable_label = conceptpair_relation_map[
-                        (concept_i, concept_j)
-                    ].value
+                relation_variable_label = conceptpair_relation_map[
+                    (concept_i, concept_j)
+                ].value
             else:
                 relation_variable_label = 0
 
@@ -340,13 +307,6 @@ if __name__ == "__main__":
         type=str,
         default="/ssd/congtj/openforge/arts/column_semantics_ontology_threshold_0.9_run_nyc_gpt_3.5_merge_root.pickle",  # noqa: E501
         help="Path to ARTS source data.",
-    )
-
-    parser.add_argument(
-        "--only_hypernymy",
-        type=int,
-        default=1,
-        help="Whether only collects hypernymy and empty relations.",
     )
 
     parser.add_argument(
@@ -407,16 +367,10 @@ if __name__ == "__main__":
     # fix random seed
     random.seed(args.random_seed)
 
-    if bool(args.only_hypernymy):
-        instance_name = os.path.join(
-            f"hypernymy_top_{args.num_head_nodes}_nodes",
-            f"training_prop_{args.train_prop}",
-        )
-    else:
-        instance_name = os.path.join(
-            f"multi_relations_top_{args.num_head_nodes}_nodes",
-            f"training_prop_{args.train_prop}",
-        )
+    instance_name = os.path.join(
+        f"multi_relations_top_{args.num_head_nodes}_nodes",
+        f"training_prop_{args.train_prop}",
+    )
     output_dir = os.path.join(args.output_dir, instance_name)
 
     if not os.path.exists(output_dir):
@@ -499,27 +453,33 @@ if __name__ == "__main__":
         train_concepts,
         train_conceptpair_relation_map,
         train_concept_collist_map,
-    ) = collect_concept_relations(train_nodes, bool(args.only_hypernymy))
+    ) = collect_concept_relations(train_nodes)
+    sample_indices = random.sample(range(len(train_concepts)), 100)
+    train_sample_concepts = [train_concepts[i] for i in sorted(sample_indices)]
 
     logger.info("Collect concept relations for validation split...")
     (
         valid_concepts,
         valid_conceptpair_relation_map,
         valid_concept_collist_map,
-    ) = collect_concept_relations(valid_nodes, bool(args.only_hypernymy))
+    ) = collect_concept_relations(valid_nodes)
+    valid_sample_indices = random.sample(range(len(valid_concepts)), 60)
+    valid_sample_concepts = [
+        valid_concepts[i] for i in sorted(valid_sample_indices)
+    ]
 
     logger.info("Collect concept relations for test split...")
     test_concepts, test_conceptpair_relation_map, test_concept_collist_map = (
-        collect_concept_relations(test_nodes, bool(args.only_hypernymy))
+        collect_concept_relations(test_nodes)
     )
-
-    min_len = min(len(valid_concepts), len(test_concepts))
-    valid_concepts = valid_concepts[:min_len]
-    test_concepts = test_concepts[:min_len]
+    test_sample_indices = random.sample(range(len(test_concepts)), 60)
+    test_sample_concepts = [
+        test_concepts[i] for i in sorted(test_sample_indices)
+    ]
 
     logger.info("Creating instances for training split...")
     mrf_data["training"] = create_relation_instances(
-        train_concepts,
+        train_sample_concepts,
         train_conceptpair_relation_map,
         train_concept_collist_map,
         qgram_model,
@@ -530,7 +490,7 @@ if __name__ == "__main__":
 
     logger.info("Creating instances for validation split...")
     mrf_data["validation"] = create_relation_instances(
-        valid_concepts,
+        valid_sample_concepts,
         valid_conceptpair_relation_map,
         valid_concept_collist_map,
         qgram_model,
@@ -541,7 +501,7 @@ if __name__ == "__main__":
 
     logger.info("Creating instances for test split...")
     mrf_data["test"] = create_relation_instances(
-        test_concepts,
+        test_sample_concepts,
         test_conceptpair_relation_map,
         test_concept_collist_map,
         qgram_model,
