@@ -20,6 +20,9 @@ from openforge.utils.prior_model_common import (
 from openforge.utils.util import fix_global_random_state, parse_config
 
 
+MODEL_NAME = "ridge"
+
+
 class RidgeClassifierTuningWrapper:
     def __init__(self, data_dir: str, random_seed: int, logger: logging.Logger):
         (
@@ -135,7 +138,7 @@ if __name__ == "__main__":
         prior_model_wrapper.fit()
 
         # Save model
-        model_save_filepath = os.path.join(output_dir, "ridge.pkl")
+        model_save_filepath = os.path.join(output_dir, f"{MODEL_NAME}.pkl")
         with open(model_save_filepath, "wb") as f:
             pickle.dump(prior_model_wrapper.clf, f)
     elif args.mode == "train_w_default_hp":
@@ -147,7 +150,7 @@ if __name__ == "__main__":
             "train_w_hp_tuning or test."
         )
 
-        model_save_filepath = os.path.join(output_dir, "ridge.pkl")
+        model_save_filepath = os.path.join(output_dir, f"{MODEL_NAME}.pkl")
         with open(model_save_filepath, "rb") as f:
             prior_model_wrapper.clf = pickle.load(f)
 
@@ -180,7 +183,9 @@ if __name__ == "__main__":
     log_exp_records(y_valid, y_valid_pred, y_valid_proba, "validation", logger)
     log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
 
-    save_dir = os.path.join(config.get("benchmark", "data_dir"), "ridge")
+    save_dir = os.path.join(
+        config.get("benchmark", "data_dir"), f"{MODEL_NAME}"
+    )
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
