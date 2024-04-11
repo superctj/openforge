@@ -15,5 +15,5 @@ source ~/.bashrc
 conda activate pgmax-gpu
 
 python ./openforge/mrf_inference/pgmax_lbp_arts_hyper.py \
-    --config_path=./openforge/mrf_inference/tuning_exp_configs/arts_hyper_ridge_pgmax_lbp.ini \
+    --config_path=./openforge/mrf_inference/tuning_exp_configs/arts_hyper_rf_pgmax_lbp.ini \
     --mode=hp_tuning
