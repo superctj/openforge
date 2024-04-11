@@ -11,11 +11,14 @@ from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import PriorModelTuningEngine
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.prior_model_common import (
-    load_openforge_sotab_small,
+    load_openforge_sotab_benchmark,
     log_exp_metrics,
     log_exp_records,
 )
 from openforge.utils.util import fix_global_random_state, parse_config
+
+
+MODEL_NAME = "rf"
 
 
 class RandomForestTuningWrapper:
@@ -30,7 +33,7 @@ class RandomForestTuningWrapper:
             self.train_df,
             self.valid_df,
             self.test_df,
-        ) = load_openforge_sotab_small(data_dir, logger)
+        ) = load_openforge_sotab_benchmark(data_dir, logger)
         self.clf = None
         self.random_seed = random_seed
 
@@ -122,7 +125,7 @@ if __name__ == "__main__":
         prior_model_wrapper.fit()
 
         # Save model
-        model_save_filepath = os.path.join(output_dir, "rf.pkl")
+        model_save_filepath = os.path.join(output_dir, f"{MODEL_NAME}.pkl")
         with open(model_save_filepath, "wb") as f:
             pickle.dump(prior_model_wrapper.clf, f)
     elif args.mode == "train_w_default_hp":
@@ -134,7 +137,7 @@ if __name__ == "__main__":
             "train_w_hp_tuning or test."
         )
 
-        model_save_filepath = os.path.join(output_dir, "rf.pkl")
+        model_save_filepath = os.path.join(output_dir, f"{MODEL_NAME}.pkl")
         with open(model_save_filepath, "rb") as f:
             prior_model_wrapper.clf = pickle.load(f)
 
@@ -167,7 +170,9 @@ if __name__ == "__main__":
     log_exp_records(y_valid, y_valid_pred, y_valid_proba, "validation", logger)
     log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
 
-    save_dir = os.path.join(config.get("benchmark", "data_dir"), "rf")
+    save_dir = os.path.join(
+        config.get("benchmark", "data_dir"), f"{MODEL_NAME}"
+    )
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
