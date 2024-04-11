@@ -3,6 +3,7 @@ import os
 import pickle
 import random
 
+from collections import Counter
 from dataclasses import make_dataclass
 from enum import Enum
 
@@ -56,10 +57,14 @@ MRFEntry = make_dataclass(
 def collect_concept_relations(split_nodes: list):
     concepts = []
     conceptpair_relation_map = {}
+    relation_conceptpair_map = {
+        RelationType.EQUIV: [],
+        RelationType.HYPER: [],
+    }
     concept_collist_map = {}
 
     for level_1_node in split_nodes:
-        if str(level_1_node) == "borough":
+        if str(level_1_node) == "borough":  # this node is noisy
             continue
 
         level_1_concept = str(level_1_node)
@@ -86,6 +91,9 @@ def collect_concept_relations(split_nodes: list):
                 conceptpair_relation_map[(level_1_concept, level_2_concept)] = (
                     RelationType.HYPER
                 )
+                relation_conceptpair_map[RelationType.HYPER].append(
+                    (level_1_concept, level_2_concept)
+                )
 
                 if level_1_concept not in concept_collist_map:
                     concept_collist_map[level_1_concept] = (
@@ -98,37 +106,53 @@ def collect_concept_relations(split_nodes: list):
                     )
 
         # Collect equivalent relations
-        for i, level_2_concept in enumerate(level_2_node.texts):
-            for level_2_merged_concept in level_2_node.texts[i + 1 :]:
-                logger.info(
-                    f"Equivalent concepts: ({level_2_concept}, "
-                    f"{level_2_merged_concept})"
-                )
-
-                if level_2_concept not in concepts:
-                    concepts.append(level_2_concept)
-                if level_2_merged_concept not in concepts:
-                    concepts.append(level_2_merged_concept)
-
-                conceptpair_relation_map[
-                    (level_2_concept, level_2_merged_concept)
-                ] = RelationType.EQUIV
-
-                if level_2_concept not in concept_collist_map:
-                    concept_collist_map[level_2_concept] = (
-                        level_2_node.text_to_tbl_column_matched[level_2_concept]
+        for level_2_node in level_1_node.children:
+            for i, level_2_concept in enumerate(level_2_node.texts):
+                for level_2_merged_concept in level_2_node.texts[i + 1 :]:
+                    logger.info(
+                        f"Equivalent concepts: ({level_2_concept}, "
+                        f"{level_2_merged_concept})"
                     )
 
-                if level_2_merged_concept not in concept_collist_map:
-                    concept_collist_map[level_2_merged_concept] = (
-                        level_2_node.text_to_tbl_column_matched[
-                            level_2_merged_concept
-                        ]
+                    if level_2_concept not in concepts:
+                        concepts.append(level_2_concept)
+                    if level_2_merged_concept not in concepts:
+                        concepts.append(level_2_merged_concept)
+
+                    conceptpair_relation_map[
+                        (level_2_concept, level_2_merged_concept)
+                    ] = RelationType.EQUIV
+
+                    relation_conceptpair_map[RelationType.EQUIV].append(
+                        (level_2_concept, level_2_merged_concept)
                     )
+
+                    if level_2_concept not in concept_collist_map:
+                        concept_collist_map[level_2_concept] = (
+                            level_2_node.text_to_tbl_column_matched[
+                                level_2_concept
+                            ]
+                        )
+
+                    if level_2_merged_concept not in concept_collist_map:
+                        concept_collist_map[level_2_merged_concept] = (
+                            level_2_node.text_to_tbl_column_matched[
+                                level_2_merged_concept
+                            ]
+                        )
 
     logger.info(f"Number of concepts: {len(concepts)}")
+    logger.info(
+        "Count of relation instances:\n"
+        f"{Counter(conceptpair_relation_map.values())}\n"
+    )
 
-    return concepts, conceptpair_relation_map, concept_collist_map
+    return (
+        concepts,
+        conceptpair_relation_map,
+        relation_conceptpair_map,
+        concept_collist_map,
+    )
 
 
 def get_value_fasttext_signature(
@@ -179,6 +203,50 @@ def get_concept_signatures(
         table_id,
         col_name,
     )
+
+
+def get_concepts_from_split_instances(relation_pairs):
+    # Keeping the partial order is important
+
+    concepts = set()
+    for pair in relation_pairs:
+        concepts.add(pair[0])
+
+    concepts = list(concepts)
+
+    for pair in relation_pairs:
+        if pair[1] not in concepts:
+            concepts.append(pair[1])
+
+    return concepts
+
+
+def create_relation_splits(relation_conceptpairs: dict):
+    train_num_instances = 30
+    valid_num_instances = 15
+    test_num_intances = 15
+
+    total_num_instances = (
+        train_num_instances + valid_num_instances + test_num_intances
+    )
+
+    sample_instances = random.sample(relation_conceptpairs, total_num_instances)
+
+    train_instances = sample_instances[:train_num_instances]
+    valid_instances = sample_instances[
+        train_num_instances : train_num_instances + valid_num_instances
+    ]
+    test_instances = sample_instances[-test_num_intances:]
+
+    return train_instances, valid_instances, test_instances
+
+
+def merge_split_intances(equiv_instances: list, hyper_instances: list):
+    split_instances = list(hyper_instances)
+    split_instances.extend(equiv_instances)
+    split_concepts = get_concepts_from_split_instances(split_instances)
+
+    return split_concepts, split_instances
 
 
 def create_relation_instances(
@@ -400,88 +468,41 @@ if __name__ == "__main__":
 
     mrf_data = {"training": [], "validation": [], "test": []}
 
-    # Split by ARTS nodes
-    base_num_nodes = 11
-    assert args.num_head_nodes >= base_num_nodes
-
-    base_indices = list(range(base_num_nodes))
-    train_indices = random.sample(
-        population=base_indices, k=int(args.train_prop * base_num_nodes)
-    )
-
-    valid_test_indices = list(set(base_indices) - set(train_indices))
-    valid_indices = random.sample(
-        population=valid_test_indices, k=len(valid_test_indices) // 2
-    )
-
-    test_indices = list(set(valid_test_indices) - set(valid_indices))
-
-    if args.num_head_nodes > base_num_nodes:
-        extra_indices = list(range(base_num_nodes, args.num_head_nodes))
-
-        extra_train_indices = random.sample(
-            population=extra_indices,
-            k=int(args.train_prop * len(extra_indices)),
-        )
-        train_indices.extend(extra_train_indices)
-
-        extra_valid_test_indices = list(
-            set(extra_indices) - set(extra_train_indices)
-        )
-
-        extra_valid_indices = random.sample(
-            population=extra_valid_test_indices,
-            k=len(extra_valid_test_indices) // 2,
-        )
-        valid_indices.extend(extra_valid_indices)
-
-        extra_test_indices = list(
-            set(extra_valid_test_indices) - set(extra_valid_indices)
-        )
-        test_indices.extend(extra_test_indices)
-
-    logger.info(f"Train indices: {train_indices}")
-    logger.info(f"Valid indices: {valid_indices}")
-    logger.info(f"Test indices: {test_indices}")
-
-    train_nodes = [nodeByLevel[args.arts_level][i] for i in train_indices]
-    valid_nodes = [nodeByLevel[args.arts_level][i] for i in valid_indices]
-    test_nodes = [nodeByLevel[args.arts_level][i] for i in test_indices]
-
-    logger.info("Collect concept relations for training split...")
-    (
-        train_concepts,
-        train_conceptpair_relation_map,
-        train_concept_collist_map,
-    ) = collect_concept_relations(train_nodes)
-    sample_indices = random.sample(range(len(train_concepts)), 100)
-    train_sample_concepts = [train_concepts[i] for i in sorted(sample_indices)]
-
-    logger.info("Collect concept relations for validation split...")
-    (
-        valid_concepts,
-        valid_conceptpair_relation_map,
-        valid_concept_collist_map,
-    ) = collect_concept_relations(valid_nodes)
-    valid_sample_indices = random.sample(range(len(valid_concepts)), 60)
-    valid_sample_concepts = [
-        valid_concepts[i] for i in sorted(valid_sample_indices)
+    top_nodes = [
+        nodeByLevel[args.arts_level][i] for i in range(args.num_head_nodes)
     ]
 
-    logger.info("Collect concept relations for test split...")
-    test_concepts, test_conceptpair_relation_map, test_concept_collist_map = (
-        collect_concept_relations(test_nodes)
+    logger.info("Collect concept relations...")
+    (
+        concepts,
+        conceptpair_relation_map,
+        relation_conceptpair_map,
+        concept_collist_map,
+    ) = collect_concept_relations(top_nodes)
+
+    logger.info("Creating relation splits...")
+    train_hyper_instances, valid_hyper_instances, test_hyper_instances = (
+        create_relation_splits(relation_conceptpair_map[RelationType.HYPER])
     )
-    test_sample_indices = random.sample(range(len(test_concepts)), 60)
-    test_sample_concepts = [
-        test_concepts[i] for i in sorted(test_sample_indices)
-    ]
+    train_equiv_instances, valid_equiv_instances, test_equiv_instances = (
+        create_relation_splits(relation_conceptpair_map[RelationType.EQUIV])
+    )
+
+    train_concepts, train_instances = merge_split_intances(
+        train_equiv_instances, train_hyper_instances
+    )
+    valid_concepts, valid_instances = merge_split_intances(
+        valid_equiv_instances, valid_hyper_instances
+    )
+    test_concepts, test_instances = merge_split_intances(
+        test_equiv_instances, test_hyper_instances
+    )
 
     logger.info("Creating instances for training split...")
     mrf_data["training"] = create_relation_instances(
-        train_sample_concepts,
-        train_conceptpair_relation_map,
-        train_concept_collist_map,
+        train_concepts,
+        conceptpair_relation_map,
+        concept_collist_map,
         qgram_model,
         fasttext_model,
         logger,
@@ -490,9 +511,9 @@ if __name__ == "__main__":
 
     logger.info("Creating instances for validation split...")
     mrf_data["validation"] = create_relation_instances(
-        valid_sample_concepts,
-        valid_conceptpair_relation_map,
-        valid_concept_collist_map,
+        valid_concepts,
+        conceptpair_relation_map,
+        concept_collist_map,
         qgram_model,
         fasttext_model,
         logger,
@@ -501,9 +522,9 @@ if __name__ == "__main__":
 
     logger.info("Creating instances for test split...")
     mrf_data["test"] = create_relation_instances(
-        test_sample_concepts,
-        test_conceptpair_relation_map,
-        test_concept_collist_map,
+        test_concepts,
+        conceptpair_relation_map,
+        concept_collist_map,
         qgram_model,
         fasttext_model,
         logger,
