@@ -13,7 +13,7 @@ from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import TuningEngine
 from openforge.utils.custom_logging import create_custom_logger, get_logger
 from openforge.utils.mrf_common import (
-    # PRIOR_CONSTANT,
+    PRIOR_CONSTANT,
     evaluate_multi_class_inference_results,
 )
 from openforge.utils.util import fix_global_random_state, parse_config
@@ -56,25 +56,25 @@ class MRFWrapper:
             mrf_hp_config["theta_2"],  # 0, 0, 1
             mrf_hp_config["theta_3"],  # 0, 0, 2
             mrf_hp_config["theta_4"],  # 0, 1, 0
-            1e-9,  # 0, 1, 1
-            1e-9,  # 0, 1, 2
+            1e-9,  # 0, 1, 1 (invalid)
+            1e-9,  # 0, 1, 2 (invalid)
             mrf_hp_config["theta_5"],  # 0, 2, 0
-            1e-9,  # 0, 2, 1
-            1e-9,  # 0, 2, 2
+            1e-9,  # 0, 2, 1 (invalid)
+            1e-9,  # 0, 2, 2 (invalid)
             mrf_hp_config["theta_6"],  # 1, 0, 0
-            1e-9,  # 1, 0, 1
-            1e-9,  # 1, 0, 2
-            1e-9,  # 1, 1, 0
+            1e-9,  # 1, 0, 1 (invalid)
+            1e-9,  # 1, 0, 2 (invalid)
+            1e-9,  # 1, 1, 0 (invalid)
             mrf_hp_config["theta_7"],  # 1, 1, 1
-            1e-9,  # 1, 1, 2
-            1e-9,  # 1, 2, 0
-            1e-9,  # 1, 2, 1
+            1e-9,  # 1, 1, 2 (invalid)
+            1e-9,  # 1, 2, 0 (invalid)
+            1e-9,  # 1, 2, 1 (invalid)
             mrf_hp_config["theta_8"],  # 1, 2, 2
             mrf_hp_config["theta_9"],  # 2, 0, 0
-            1e-9,  # 2, 0, 1
+            1e-9,  # 2, 0, 1 (invalid)
             mrf_hp_config["theta_10"],  # 2, 0, 2
-            1e-9,  # 2, 1, 0
-            1e-9,  # 2, 1, 1
+            1e-9,  # 2, 1, 0 (invalid)
+            1e-9,  # 2, 1, 1 (invalid)
             mrf_hp_config["theta_11"],  # 2, 1, 2
             1e-9,  # 2, 2, 0
             1e-9,  # 2, 2, 1
@@ -100,11 +100,24 @@ class MRFWrapper:
 
             variables_for_unary_factors.append([var])
 
-            pred_proba = [
-                row.class_0_prediction_probability,
-                row.class_1_prediction_probability,
-                row.class_2_prediction_probability,
-            ]
+            if row.class_0_prediction_probability == 1:
+                pred_proba = [
+                    row.class_0_prediction_probability - PRIOR_CONSTANT,
+                    row.class_1_prediction_probability + PRIOR_CONSTANT / 2,
+                    row.class_2_prediction_probability + PRIOR_CONSTANT / 2,
+                ]
+            elif row.class_1_prediction_probability == 1:
+                pred_proba = [
+                    row.class_0_prediction_probability + PRIOR_CONSTANT / 2,
+                    row.class_1_prediction_probability - PRIOR_CONSTANT,
+                    row.class_2_prediction_probability + PRIOR_CONSTANT / 2,
+                ]
+            elif row.class_2_prediction_probability == 1:
+                pred_proba = [
+                    row.class_0_prediction_probability + PRIOR_CONSTANT / 2,
+                    row.class_1_prediction_probability + PRIOR_CONSTANT / 2,
+                    row.class_2_prediction_probability - PRIOR_CONSTANT,
+                ]
 
             prior = np.log(np.array(pred_proba))
             log_potentials.append(prior)
