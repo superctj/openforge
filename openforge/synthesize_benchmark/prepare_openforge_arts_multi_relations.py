@@ -48,8 +48,8 @@ MRFEntry = make_dataclass(
         ("name_char_count_ratio", float),
         ("value_jaccard_similarity", float),
         ("value_fasttext_similarity", float),
-        ("relation_variable_name", str),
         ("relation_variable_label", int),
+        ("relation_variable_name", str),
     ],
 )
 
@@ -207,12 +207,11 @@ def get_concept_signatures(
 
 def get_concepts_from_split_instances(relation_pairs):
     # Keeping the partial order is important
+    concepts = []
 
-    concepts = set()
     for pair in relation_pairs:
-        concepts.add(pair[0])
-
-    concepts = list(concepts)
+        if pair[0] not in concepts:
+            concepts.append(pair[0])
 
     for pair in relation_pairs:
         if pair[1] not in concepts:
@@ -359,8 +358,8 @@ def create_relation_instances(
                     name_char_count_ratio,
                     value_jaccard_sim,
                     value_fasttext_sim,
-                    relation_variable_name,
                     relation_variable_label,
+                    relation_variable_name,
                 )
             )
 
@@ -497,6 +496,14 @@ if __name__ == "__main__":
     test_concepts, test_instances = merge_split_intances(
         test_equiv_instances, test_hyper_instances
     )
+
+    logger.info(f"Number of train concepts: {len(train_concepts)}")
+    logger.info(f"Number of valid concepts: {len(valid_concepts)}")
+    logger.info(f"Number of test concepts: {len(test_concepts)}")
+
+    logger.info(f"Number of train instances: {len(train_instances)}")
+    logger.info(f"Number of valid instances: {len(valid_instances)}")
+    logger.info(f"Number of test instances: {len(test_instances)}")
 
     logger.info("Creating instances for training split...")
     mrf_data["training"] = create_relation_instances(
