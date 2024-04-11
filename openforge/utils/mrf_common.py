@@ -11,7 +11,7 @@ from sklearn.metrics import (
 from openforge.utils.custom_logging import get_logger
 
 
-PRIOR_CONSTANT = 1e-9
+PRIOR_CONSTANT = 0.05
 
 
 def convert_var_name_to_var_id(var_name):
