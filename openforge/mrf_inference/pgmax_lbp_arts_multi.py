@@ -130,8 +130,8 @@ class MRFWrapper:
         for combo in ternary_combos:
             try:
                 var1 = variables.__getitem__(f"R_{combo[0]}-{combo[1]}")
-                var2 = variables.__getitem__(f"R_{combo[0]}-{combo[2]}")
-                var3 = variables.__getitem__(f"R_{combo[1]}-{combo[2]}")
+                var2 = variables.__getitem__(f"R_{combo[1]}-{combo[2]}")
+                var3 = variables.__getitem__(f"R_{combo[0]}-{combo[2]}")
             except ValueError or KeyError:
                 continue
 

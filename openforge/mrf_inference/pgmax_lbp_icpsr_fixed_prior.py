@@ -155,8 +155,8 @@ class MRFWrapper:
 
         for combo in ternary_combos:
             var1 = variables.__getitem__(f"R_{combo[0]}-{combo[1]}")
-            var2 = variables.__getitem__(f"R_{combo[0]}-{combo[2]}")
-            var3 = variables.__getitem__(f"R_{combo[1]}-{combo[2]}")
+            var2 = variables.__getitem__(f"R_{combo[1]}-{combo[2]}")
+            var3 = variables.__getitem__(f"R_{combo[0]}-{combo[2]}")
             variables_for_ternary_factors.append([var1, var2, var3])
 
         ternary_factor_group = fgroup.EnumFactorGroup(
