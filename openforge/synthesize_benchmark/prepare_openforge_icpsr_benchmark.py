@@ -38,8 +38,8 @@ DataEntry = make_dataclass(
         ("name_fasttext_similarity", float),
         ("name_word_count_ratio", float),
         ("name_char_count_ratio", float),
-        ("relation_variable_name", str),
         ("relation_variable_label", int),
+        ("relation_variable_name", str),
     ],
 )
 
@@ -160,7 +160,7 @@ def collect_ordered_relation_instances(term_relations: pd.DataFrame):
                     (subject_id, object_id)
                 )
                 pair_relation_map[(subject_id, object_id)] = RelationType.HYPO
-            # subject is a referred or nonpreferred term of object
+            # subject is a preferred or nonpreferred term of object
             elif relationship == 4 or relationship == 5:
                 ordered_relation_instances[RelationType.EQUIV].append(
                     (subject_id, object_id)
