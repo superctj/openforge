@@ -370,20 +370,22 @@ def create_splits(
     train_concepts, train_pair_relation_map = (
         collect_concepts_and_relation_instances(equiv_train_df, hyper_train_df)
     )
-    logger.info(f"\n Number of training concepts: len{train_concepts}")
-    logger.info(f"Number of training instances: len{train_pair_relation_map}")
+    logger.info(f"\nNumber of training concepts: {len(train_concepts)}")
+    logger.info(f"Number of training instances: {len(train_pair_relation_map)}")
 
     valid_concepts, valid_pair_relation_map = (
         collect_concepts_and_relation_instances(equiv_valid_df, hyper_valid_df)
     )
-    logger.info(f"\n Number of validation concepts: len{valid_concepts}")
-    logger.info(f"Number of validation instances: len{valid_pair_relation_map}")
+    logger.info(f"\nNumber of validation concepts: {len(valid_concepts)}")
+    logger.info(
+        f"Number of validation instances: {len(valid_pair_relation_map)}"
+    )
 
     test_concepts, test_pair_relation_map = (
         collect_concepts_and_relation_instances(equiv_test_df, hyper_test_df)
     )
-    logger.info(f"\n Number of test concepts: len{test_concepts}")
-    logger.info(f"Number of test instances: len{test_pair_relation_map}")
+    logger.info(f"\nNumber of test concepts: {len(test_concepts)}")
+    logger.info(f"Number of test instances: {len(test_pair_relation_map)}")
 
     return (
         train_concepts,
@@ -513,6 +515,7 @@ if __name__ == "__main__":
         args.verified_relation_filepath,
         train_prop=args.train_prop,
         random_seed=args.random_seed,
+        logger=logger,
     )
 
     qgram_model = QGramTransformer(qgram_size=3)
