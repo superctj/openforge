@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=arts-hyper_pgmax-gpu-lbp_hp-tuning
+#SBATCH --job-name=arts-multi_pgmax-gpu-lbp_hp-tuning
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
@@ -8,7 +8,7 @@
 #SBATCH --mem=128g
 #SBATCH --time=1-00:00:00
 #SBATCH --account=jag98
-#SBATCH --output=/home/congtj/openforge/openforge/mrf_inference/arts_multi_outputs.log
+#SBATCH --output=/home/congtj/openforge/openforge/mrf_inference/arts_multi_rf_outputs.log
 
 module load cuda/12.1.1
 source ~/.bashrc
