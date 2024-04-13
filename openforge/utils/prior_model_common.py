@@ -110,7 +110,7 @@ def load_openforge_sotab_benchmark(
 
 
 def load_openforge_icpsr_split(
-    split_filepath: str, logger: logging.Logger
+    split_filepath: str, logger: logging.Logger, multi_class: bool = True
 ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """Load a split of an OpenForge-SOTAB dataset.
 
@@ -145,16 +145,21 @@ def load_openforge_icpsr_split(
 
     logger.info(f"X shape: {X.shape}")
     logger.info(f"y shape: {y.shape}")
-    logger.info(f"Number of null relation instances: {np.sum(y == 0)}")
-    logger.info(f"Number of equivalent instances: {np.sum(y == 1)}")
-    logger.info(f"Number of hypernymy instances: {np.sum(y == 2)}")
-    logger.info(f"Number of hyponymy instances: {np.sum(y == 3)}\n")
+
+    if multi_class:
+        logger.info(f"Number of empty relation instances: {np.sum(y == 0)}")
+        logger.info(f"Number of equivalent instances: {np.sum(y == 1)}")
+        logger.info(f"Number of hypernymy instances: {np.sum(y == 2)}")
+        logger.info(f"Number of hyponymy instances: {np.sum(y == 3)}\n")
+    else:
+        logger.info(f"Number of empty relation instances: {np.sum(y == 0)}")
+        logger.info(f"Number of hypernymy instances: {np.sum(y == 1)}")
 
     return X, y, df
 
 
 def load_openforge_icpsr_benchmark(
-    data_dir: str, logger: logging.Logger
+    data_dir: str, logger: logging.Logger, multi_class: bool = True
 ) -> tuple[
     np.ndarray,
     np.ndarray,
@@ -177,22 +182,35 @@ def load_openforge_icpsr_benchmark(
         The training, validation, and test data.
     """
 
-    train_filepath = os.path.join(data_dir, "openforge_icpsr_training.csv")
-    valid_filepath = os.path.join(data_dir, "openforge_icpsr_validation.csv")
-    test_filepath = os.path.join(data_dir, "openforge_icpsr_test.csv")
+    if multi_class:
+        train_filepath = os.path.join(data_dir, "openforge_icpsr_training.csv")
+        valid_filepath = os.path.join(
+            data_dir, "openforge_icpsr_validation.csv"
+        )
+        test_filepath = os.path.join(data_dir, "openforge_icpsr_test.csv")
+    else:
+        train_filepath = os.path.join(
+            data_dir, "openforge_icpsr_hyper_training.csv"
+        )
+        valid_filepath = os.path.join(
+            data_dir, "openforge_icpsr_hyper_validation.csv"
+        )
+        test_filepath = os.path.join(data_dir, "openforge_icpsr_hyper_test.csv")
 
     logger.info("Loading training split...")
     X_train, y_train, train_df = load_openforge_icpsr_split(
-        train_filepath, logger
+        train_filepath, logger, multi_class
     )
 
     logger.info("Loading validation split...")
     X_valid, y_valid, valid_df = load_openforge_icpsr_split(
-        valid_filepath, logger
+        valid_filepath, logger, multi_class
     )
 
     logger.info("Loading test split...")
-    X_test, y_test, test_df = load_openforge_icpsr_split(test_filepath, logger)
+    X_test, y_test, test_df = load_openforge_icpsr_split(
+        test_filepath, logger, multi_class
+    )
 
     return (
         X_train,
