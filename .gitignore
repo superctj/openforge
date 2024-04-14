@@ -13,3 +13,4 @@ data/
 exps/
 plotting/
 *.txt
+*.log
