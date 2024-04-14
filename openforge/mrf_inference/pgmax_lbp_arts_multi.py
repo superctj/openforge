@@ -82,6 +82,7 @@ class MRFWrapper:
         ]
         log_ternary_table = np.log(np.array(ternary_table))
 
+        start = time.time()
         var_names = self.prior_data["relation_variable_name"].tolist()
         variables = vgroup.VarDict(num_states=3, variable_names=var_names)
 
@@ -127,6 +128,11 @@ class MRFWrapper:
             log_potentials=np.array(log_potentials),
         )
         fg.add_factors(unary_factor_group)
+
+        end = time.time()
+        self.logger.info(
+            f"Time to create and add MRF variables: {end-start:.2f} seconds"
+        )
 
         # add ternary factors
         start = time.time()
