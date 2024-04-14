@@ -11,7 +11,7 @@ from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import PriorModelTuningEngine
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.prior_model_common import (
-    load_openforge_sotab_benchmark,
+    load_openforge_arts_benchmark,
     log_exp_metrics,
     log_exp_records,
 )
@@ -33,7 +33,7 @@ class GBDTTuningWrapper:
             self.train_df,
             self.valid_df,
             self.test_df,
-        ) = load_openforge_sotab_benchmark(data_dir, logger)
+        ) = load_openforge_arts_benchmark(data_dir, logger)
         self.clf = None
         self.random_seed = random_seed
 
