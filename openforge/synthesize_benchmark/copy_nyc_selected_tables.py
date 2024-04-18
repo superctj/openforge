@@ -7,7 +7,7 @@ import pymongo
 
 ROOT_DOWNLOAD = "/home/jjxing/ssd/new_project/data"
 SELECTED_DATA_DIR = "/ssd/congtj/openforge/arts/artifact/verified_multi_relations_top_6_nodes/training_prop_0.5"  # "/ssd/congtj/openforge/arts/artifact/multi_relations_top_11_nodes/training_prop_0.5"  # "/ssd/congtj/openforge/arts/artifact/top_40_nodes/training_prop_0.5"  # noqa: E501
-DESTINATION_DIR = "/ssd/congtj/openforge/arts/verified_multi_relation_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/multi_relation_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/nyc_selected_tables" # noqa: E501
+DESTINATION_DIR = "/ssd2/congtj/openforge/arts/verified_multi_relations_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/multi_relation_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/nyc_selected_tables" # noqa: E501
 EXIST_TABLE_IDS = set()
 
 
@@ -58,6 +58,9 @@ if __name__ == "__main__":
 
     data_gov_mongo = client["data_gov_mar_21_2023"]
     data_gov_csv_file_col = data_gov_mongo["csvfile"]
+
+    if not os.path.exists(DESTINATION_DIR):
+        os.makedirs(DESTINATION_DIR)
 
     for split in os.listdir(SELECTED_DATA_DIR):
         if split.endswith(".csv"):
