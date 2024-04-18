@@ -6,8 +6,8 @@ import pymongo
 
 
 ROOT_DOWNLOAD = "/home/jjxing/ssd/new_project/data"
-SELECTED_DATA_DIR = "/ssd/congtj/openforge/arts/artifact/multi_relations_top_11_nodes/training_prop_0.5"  # "/ssd/congtj/openforge/arts/artifact/top_40_nodes/training_prop_0.5"  # noqa: E501
-DESTINATION_DIR = "/ssd/congtj/openforge/arts/multi_relation_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/nyc_selected_tables" # noqa: E501
+SELECTED_DATA_DIR = "/ssd/congtj/openforge/arts/artifact/verified_multi_relations_top_6_nodes/training_prop_0.5"  # "/ssd/congtj/openforge/arts/artifact/multi_relations_top_11_nodes/training_prop_0.5"  # "/ssd/congtj/openforge/arts/artifact/top_40_nodes/training_prop_0.5"  # noqa: E501
+DESTINATION_DIR = "/ssd/congtj/openforge/arts/verified_multi_relation_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/multi_relation_nyc_selected_tables"  # "/ssd/congtj/openforge/arts/nyc_selected_tables" # noqa: E501
 EXIST_TABLE_IDS = set()
 
 
