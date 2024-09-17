@@ -174,6 +174,11 @@ def parse_llm_response(response: str) -> int:
 
     pattern = r"{[^}]*}"
     matches = re.findall(pattern, response)
+
+    if not matches:
+        logger.info(f"No match found in response: {response}")
+        return 0
+
     json_str = matches[0].strip().replace("'", '"')
 
     try:
