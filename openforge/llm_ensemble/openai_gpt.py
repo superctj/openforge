@@ -7,7 +7,7 @@ import pandas as pd
 from openai import OpenAI
 
 from openforge.utils.custom_logging import create_custom_logger
-from openforge.utils.llm_common import parse_openai_response
+from openforge.utils.llm_common import parse_llm_response
 from openforge.utils.prior_model_common import log_exp_metrics
 from openforge.utils.util import parse_config
 
@@ -37,7 +37,7 @@ def get_gpt35_prediction(
         logprobs=True,
     )
 
-    pred = parse_openai_response(response)
+    pred = parse_llm_response(response.choices[0].message.content)
 
     return pred
 
