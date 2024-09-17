@@ -118,9 +118,8 @@ if __name__ == "__main__":
 
         test_df["prediction"] = all_predictions
 
-        output_filepath = os.path.join(
-            output_dir, f"{data_filepath.split('/')[-1]}.json"
-        )
+        output_filename = data_filepath.split("/")[-1].split(".")[0]
+        output_filepath = os.path.join(output_dir, f"{output_filename}.json")
         test_df.to_json(output_filepath, orient="records", indent=4)
     else:
         assert args.mode == "evaluation"
@@ -129,5 +128,5 @@ if __name__ == "__main__":
         all_labels = test_df["label"].tolist()
 
     log_exp_metrics(
-        "test", all_labels, all_predictions, logger, multi_class=False
+        output_filename, all_labels, all_predictions, logger, multi_class=False
     )
