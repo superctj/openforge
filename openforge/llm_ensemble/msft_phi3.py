@@ -112,7 +112,7 @@ if __name__ == "__main__":
             #     break
 
             logger.info(
-                f"{i}/{test_df.shape[0]}: prediction={pred}, label={row['label']}"
+                f"{i}/{test_df.shape[0]}: prediction={pred}, label={row['label']}"  # noqa: E501
             )
             logger.info("-" * 80)
 
