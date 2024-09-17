@@ -67,5 +67,5 @@ if __name__ == "__main__":
             output_dir, f"sotab_test-w_sample_values-{num_shots}_shots.json"
         ),
         orient="records",
-        lines=True,
+        indent=4,
     )
