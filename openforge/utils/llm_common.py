@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -165,3 +166,27 @@ Output:
     )
 
     return prompt
+
+
+def parse_openai_response(response: str) -> int:
+    logger = logging.getLogger()
+
+    json_str = response.choices[0].message.content
+    json_str = json_str.replace("'", '"')
+
+    try:
+        pred = int(json.loads(json_str)["match"])
+    except json.decoder.JSONDecodeError as e:
+        logger.warning(f"Invalid response: {json_str}. Original error: {e}")
+        pred = 0
+
+    return pred
+
+    # try:
+    #     decision = json.loads(json_str)["match"]
+    # except json.JSONDecodeError as e:
+    #     raise ValueError(f"Invalid response: {json_str}. Original error: {e}")
+    # except KeyError as e:
+    #     raise ValueError(f"Invalid response: {json_str}. Original error: {e}")
+
+    # return int(decision)
