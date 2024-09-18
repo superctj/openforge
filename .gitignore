@@ -14,3 +14,4 @@ exps/
 plotting/
 *.txt
 *.log
+*.out
