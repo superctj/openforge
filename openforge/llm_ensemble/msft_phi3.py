@@ -123,9 +123,18 @@ if __name__ == "__main__":
 
     if args.mode == "inference":
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        model = AutoModelForCausalLM.from_pretrained(
-            model_id, trust_remote_code=True
-        )
+
+        if model_id == "microsoft/Phi-3-small-8k-instruct":
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                torch_dtype=torch.bfloat16,
+                attn_implementation="flash_attention_2",
+                trust_remote_code=True,
+            )
+        else:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id, trust_remote_code=True
+            )
         model.to(device)
         tokenizer = AutoTokenizer.from_pretrained(
             model_id, trust_remote_code=True
