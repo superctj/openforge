@@ -12,32 +12,44 @@ from openforge.utils.prior_model_common import log_exp_metrics
 from openforge.utils.util import parse_config
 
 
-def get_gpt35_prediction(
+def get_gpt_prediction(
     client,
     model_id: str,
-    temperature: float,
     user_prompt: str,
+    system_prompt: str = None,
+    temperature: float = 0.7,
+    max_new_tokens: int = 50,
+    logger=None,
 ) -> int:
-    messages = [
-        {
-            "role": "system",
-            "content": "Your task is to decide whether two data objects (e.g., string, tuple, column, entity, etc.) match each other or semantically equivalent. Return the result in the JSON format: '{'match': true}' or '{'match': false}'.",  # noqa: E501
-        },
-        {
-            "role": "user",
-            "content": user_prompt,
-        },
-    ]
+    if not system_prompt:
+        messages = [
+            {
+                "role": "user",
+                "content": user_prompt,
+            }
+        ]
+    else:
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt,  # "Your task is to decide whether two data objects (e.g., string, tuple, column, entity, etc.) match each other or semantically equivalent. Return the result in the JSON format: '{'match': true}' or '{'match': false}'.",  # noqa: E501
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ]
 
     response = client.chat.completions.create(
         model=model_id,
         messages=messages,
         temperature=temperature,
-        max_completion_tokens=50,
-        logprobs=True,
+        max_completion_tokens=max_new_tokens,
     )
-
     pred = parse_llm_response(response.choices[0].message.content)
+
+    if logger:
+        logger.info(f"Response: {response}")
 
     return pred
 
@@ -56,7 +68,7 @@ if __name__ == "__main__":
         "--mode",
         type=str,
         default="evaluation",
-        help="Mode of operation. 'inference' will call OpenAI API to obtain predictions while 'evaluation' will evaluate existing predictions.",  # noqa: E501
+        help="Mode of operation. 'inference' will incur model API to obtain predictions; 'test' will incur model API up to 3 times for testing purpose; 'evaluation' will evaluate existing predictions.",  # noqa: E501
     )
 
     args = parser.parse_args()
@@ -82,36 +94,40 @@ if __name__ == "__main__":
 
     model_id = config.get("llm", "model_id")
     temperature = config.getfloat("llm", "temperature")
+    max_new_tokens = config.getint("llm", "max_new_tokens")
 
-    if args.mode == "inference":
-        all_predictions = []
-        all_labels = []
+    if args.mode == "inference" or args.mode == "test":
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        for i, row in test_df.iterrows():
-            prompt = row["prompt"]
+        all_predictions = []
+        all_labels = []
 
-            if model_id == "gpt-3.5-turbo-1106":
-                pred = get_gpt35_prediction(
-                    client,
-                    model_id,
-                    temperature,
-                    prompt,
-                )
+        for i, row in test_df.iterrows():
+            logger.info(f"{i+1}/{test_df.shape[0]}:")
+
+            prompt = row["prompt"]
+            pred = get_gpt_prediction(
+                client,
+                model_id,
+                user_prompt=prompt,
+                temperature=temperature,
+                max_new_tokens=max_new_tokens,
+                logger=logger,
+            )
 
             all_predictions.append(pred)
             all_labels.append(int(row["label"]))
 
-            logger.info(f"i={i}: prediction={pred}, label={row['label']}")
-            logger.info("-" * 50)
+            logger.info(f"prediction={pred}, label={row['label']}")
+            logger.info("-" * 80)
+
+            if args.mode == "test" and i >= 2:
+                break
 
         test_df["prediction"] = all_predictions
-        output_filepath = os.path.join(
-            output_dir, f"{data_filepath.split('/')[-1]}.json"
-        )
-        test_df.to_json(
-            config.get("exp", "output_filepath"), orient="records", indent=4
-        )
+        output_filename = data_filepath.split("/")[-1].split(".")[0]
+        output_filepath = os.path.join(output_dir, f"{output_filename}.json")
+        test_df.to_json(output_filepath, orient="records", indent=4)
     else:
         assert args.mode == "evaluation"
 
@@ -119,5 +135,5 @@ if __name__ == "__main__":
         all_labels = test_df["label"].tolist()
 
     log_exp_metrics(
-        "test", all_labels, all_predictions, logger, multi_class=False
+        output_filename, all_labels, all_predictions, logger, multi_class=False
     )
