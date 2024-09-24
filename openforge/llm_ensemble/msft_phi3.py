@@ -171,7 +171,7 @@ if __name__ == "__main__":
         all_labels = []
 
         for i, row in test_df.iterrows():
-            prompt = row["prompt"]
+            logger.info(f"{i+1}/{test_df.shape[0]}:")
 
             # llama-3.1-8b-instruct does not follow the prompt to simply return the result in JSON format # noqa: E501
             if model_id == "meta-llama/Meta-Llama-3.1-8B-Instruct":
@@ -187,6 +187,7 @@ if __name__ == "__main__":
             else:
                 max_new_tokens = 50
 
+            prompt = row["prompt"]
             pred = get_llm_prediction(
                 model,
                 tokenizer,
@@ -200,9 +201,7 @@ if __name__ == "__main__":
             all_predictions.append(pred)
             all_labels.append(int(row["label"]))
 
-            logger.info(
-                f"{i+1}/{test_df.shape[0]}: prediction={pred}, label={row['label']}"  # noqa: E501
-            )
+            logger.info(f"prediction={pred}, label={row['label']}")
             logger.info("-" * 80)
 
             if args.mode == "test" and i >= 2:
