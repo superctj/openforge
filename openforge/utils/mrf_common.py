@@ -32,36 +32,54 @@ def evaluate_inference_results(
         if log_predictions:
             logger.info("-" * 80)
 
+        if hasattr(row, "relation_variable_label"):
+            var_label = int(row.relation_variable_label)
+        elif hasattr(row, "label"):
+            var_label = int(row.label)
+        else:
+            raise AttributeError(
+                "No ground truth attribute found in prior data."
+            )
+
         var_name = row.relation_variable_name
-        var_label = int(row.relation_variable_label)
         pred = int(results[var_name])
 
-        y_true.append(row.relation_variable_label)
+        y_true.append(var_label)
         y_pred.append(pred)
 
-        if row.positive_label_prediction_probability >= 0.5:
-            ml_pred = 1
+        if hasattr(row, "positive_label_prediction_probability"):
+            if row.positive_label_prediction_probability >= 0.5:
+                prior_pred = 1
+                log_msg = (
+                    f"Prior for variable {var_name}: ({prior_pred}, "
+                    f"{row.positive_label_prediction_probability:.2f})"
+                )
+            else:
+                prior_pred = 0
+                log_msg = (
+                    f"Prior for variable {var_name}: ({prior_pred}, "
+                    f"{1 - row.positive_label_prediction_probability:.2f})"
+                )
+        elif hasattr(row, "confidence_score"):
+            prior_pred = row.prediction
+            confdc_score = row.confidence_score
             log_msg = (
-                f"Prior for variable {var_name}: ({ml_pred}, "
-                f"{row.positive_label_prediction_probability:.2f})"
+                f"Prior for variable {var_name}: ({prior_pred}, "
+                f"{confdc_score:.2f})"
             )
         else:
-            ml_pred = 0
-            log_msg = (
-                f"Prior for variable {var_name}: ({ml_pred}, "
-                f"{1 - row.positive_label_prediction_probability:.2f})"
-            )
+            raise AttributeError("No confidence score found in prior data.")
 
-        y_prior.append(ml_pred)
+        y_prior.append(prior_pred)
 
         if log_predictions:
             logger.info(log_msg)
             logger.info(f"Posterior for variable {var_name}: {pred}")
             logger.info(f"True label for variable {var_name}: {var_label}")
 
-            if ml_pred != var_label:
+            if prior_pred != var_label:
                 logger.info("Prior prediction is incorrect.")
-            if pred != row.relation_variable_label:
+            if pred != var_label:
                 logger.info("Posterior prediction is incorrect.")
 
     if log_predictions:

@@ -36,7 +36,13 @@ TERNARY_FACTOR_CONFIG = np.array(
 
 class MRFWrapper:
     def __init__(self, prior_filepath: str, **kwargs):
-        self.prior_data = pd.read_csv(prior_filepath)
+        if prior_filepath.endswith(".csv"):
+            self.prior_data = pd.read_csv(prior_filepath)
+        elif prior_filepath.endswith(".json"):
+            self.prior_data = pd.read_json(prior_filepath)
+        else:
+            raise ValueError("Invalid file format. Must be .csv or .json.")
+
         self.tune_lbp_hp = kwargs.get("tune_lbp_hp", False)
 
         if not self.tune_lbp_hp:
@@ -92,14 +98,32 @@ class MRFWrapper:
             var = variables.__getitem__(var_name)
             variables_for_unary_factors.append([var])
 
-            pred_proba = row.positive_label_prediction_probability
-            # Get around the warning of dividing by zero encountered in log
-            if pred_proba == 1:
-                pred_proba = 1 - PRIOR_CONSTANT
-            elif pred_proba == 0:
-                pred_proba = PRIOR_CONSTANT
+            if hasattr(row, "positive_label_confidence_score"):
+                pred_proba = row.positive_label_prediction_probability
 
-            prior = np.log(np.array([1 - pred_proba, pred_proba]))
+                # Get around the warning of dividing by zero encountered in log
+                if pred_proba == 1:
+                    pred_proba = 1 - PRIOR_CONSTANT
+                elif pred_proba == 0:
+                    pred_proba = PRIOR_CONSTANT
+
+                prior = np.log(np.array([1 - pred_proba, pred_proba]))
+            elif hasattr(row, "confidence_score"):
+                pred_proba = row.confidence_score
+
+                # Get around the warning of dividing by zero encountered in log
+                if pred_proba == 1:
+                    pred_proba = 1 - PRIOR_CONSTANT
+                elif pred_proba == 0:
+                    pred_proba = PRIOR_CONSTANT
+
+                if row.prediction == 1:
+                    prior = np.log(np.array([1 - pred_proba, pred_proba]))
+                else:
+                    prior = np.log(np.array([pred_proba, 1 - pred_proba]))
+            else:
+                raise AttributeError("No confidence score found in prior data.")
+
             log_potentials.append(prior)
 
         unary_factor_group = fgroup.EnumFactorGroup(
@@ -201,9 +225,6 @@ if __name__ == "__main__":
     # Parse experiment configuration
     config = parse_config(args.config_path)
 
-    # Set global random state
-    fix_global_random_state(config.getint("hp_optimization", "random_seed"))
-
     # Create logger
     output_dir = config.get("results", "output_dir")
     if not os.path.exists(output_dir):
@@ -217,6 +238,9 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     if args.mode == "hp_tuning":
+        # Set global random state
+        fix_global_random_state(config.getint("hp_optimization", "random_seed"))
+
         # Create MRF hyperparameter space
         hp_space = HyperparameterSpace(
             config.get("hp_optimization", "hp_spec_filepath"),
@@ -241,6 +265,10 @@ if __name__ == "__main__":
         # Hyperparameter tuning
         tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
         best_hp_config = tuning_engine.run()
+
+        test_mrf_wrapper = MRFWrapper(
+            config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=True
+        )
     else:
         assert args.mode == "inference", (
             f"Invalid mode: {args.mode}. Mode must either be hp_tuning or "
@@ -248,18 +276,19 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            "damping": 0.7858213721344507,
-            "num_iters": 921,
-            "temperature": 0.9910111614267442,
-            "alpha": 0.5768611571269355,
-            "beta": 0.5855811670070769,
-            "gamma": 0.016516056183874597,
-            "delta": 0.588351726474382,
+            # "damping": 0.7858213721344507,
+            # "num_iters": 921,
+            # "temperature": 0.9910111614267442,
+            "alpha": 0.9,  # 0.5768611571269355,
+            "beta": 0.7,  # 0.5855811670070769,
+            "gamma": 0.7,  # 0.016516056183874597,
+            "delta": 0.7,  # 0.588351726474382,
         }
+        logger.info(f"Best hyperparameters:\n{best_hp_config}")
 
-    test_mrf_wrapper = MRFWrapper(
-        config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=True
-    )
+        test_mrf_wrapper = MRFWrapper(
+            config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=False
+        )
 
     test_mrf = test_mrf_wrapper.create_mrf(dict(best_hp_config))
     results = test_mrf_wrapper.run_inference(test_mrf, dict(best_hp_config))
