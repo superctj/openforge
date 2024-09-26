@@ -7,9 +7,8 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 
-from snorkel.labeling.model import MajorityLabelVoter
-
 from openforge.utils.custom_logging import create_custom_logger
+from openforge.utils.prior_model_common import log_exp_metrics
 from openforge.utils.util import parse_config
 
 
@@ -46,13 +45,11 @@ def prepare_mrf_inputs_for_sotab(
     source_filepath: str,
     output_dir: str,
     preds: list[int],
-    positive_class_pred_probabilities: list[float],
+    pred_confdc_scores: list[float],
 ):
     df = pd.read_json(source_filepath)
     df["prediction"] = preds
-    df["positive_label_prediction_probability"] = (
-        positive_class_pred_probabilities
-    )
+    df["confidence_score"] = pred_confdc_scores
 
     # Assign random variable names (it is recorded as "relation_variable_name"
     # in the JSON for legacy reasons)
@@ -105,25 +102,37 @@ if __name__ == "__main__":
         root_dir, model_ids, input_filename, logger
     )
 
-    majority_model = MajorityLabelVoter()
-    majority_probabilities = majority_model.predict_proba(L=all_predictions)
-
     majority_preds = []
-    positive_class_pred_probabilities = []
+    majority_confdc_scores = []
+    n = all_predictions.shape[0]
 
-    for i in range(majority_probabilities.shape[0]):
-        majority_preds.append(np.argmax(majority_probabilities[i]))
-        positive_class_pred_probabilities.append(majority_probabilities[i][1])
+    for i in range(n):
+        # Get the majority vote prediction and confidence score
+        majority_vote = np.argmax(np.bincount(all_predictions[i]))
+        confdc_score = np.mean(all_predictions[i] == majority_vote)
+
+        majority_preds.append(majority_vote)
+        majority_confdc_scores.append(confdc_score)
+
+        logger.info(f"{i+1} / {n}")
+        logger.info(f"All predictions: {all_predictions[i]}")
+        logger.info(f"Ground truth: {ground_truth[i]}")
+
+        logger.info(f"Majority vote prediction: {majority_vote}")
+        logger.info(f"Majority vote confidence score: {confdc_score}")
+        logger.info("-" * 80)
 
     prepare_mrf_inputs_for_sotab(
         source_filepath=os.path.join(root_dir, input_filename),
         output_dir=output_dir,
         preds=majority_preds,
-        positive_class_pred_probabilities=positive_class_pred_probabilities,
+        pred_confdc_scores=majority_confdc_scores,
     )
 
-    majority_scores = majority_model.score(
-        L=all_predictions, Y=ground_truth, metrics=["f1", "precision", "recall"]
+    # Log experiment metrics
+    log_exp_metrics(
+        input_filename,
+        y=ground_truth,
+        y_pred=np.array(majority_preds),
+        logger=logger,
     )
-
-    logger.info(f"Majority voting scores:\n{majority_scores}")
