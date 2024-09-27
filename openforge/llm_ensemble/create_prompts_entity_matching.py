@@ -8,12 +8,32 @@ from openforge.utils.llm_common import load_unicorn_entity_matching_benchmark
 from openforge.utils.util import parse_config
 
 
+def sample_few_shot_examples(
+    df: pd.DataFrame, n: int = 10, balanced: bool = True, random_seed: int = 42
+) -> pd.DataFrame:
+    if n == 0:
+        return pd.DataFrame()
+
+    if not balanced:
+        return df.sample(n, random_state=random_seed)
+
+    sample_df = pd.concat(
+        [
+            df[df["label"] == 1].sample(n // 2, random_state=random_seed),
+            df[df["label"] == 0].sample(n - n // 2, random_state=random_seed),
+        ]
+    )
+    sample_df = sample_df.sample(frac=1)  # random shuffle
+
+    return sample_df
+
+
 def craft_entity_matching_user_prompt(
     test_record: dict, few_shot_df: pd.DataFrame
 ) -> str:
     prompt = """Entity matching is the task of determining whether two entity descriptions refer to the same real-world entity."""  # noqa: E501
 
-    if few_shot_df and not few_shot_df.empty:
+    if few_shot_df is not None and not few_shot_df.empty:
         prompt += """\n\nFor example,\n\n"""
 
         fewshot_prompt = "\n\n".join(
@@ -80,14 +100,15 @@ if __name__ == "__main__":
         config.get("benchmark", "data_dir")
     )
 
+    few_shot_df = sample_few_shot_examples(
+        train_df, n=num_shots, balanced=True, random_seed=random_seed
+    )
+
     all_prompts = []
     all_labels = []
 
     for i, row in test_df.iterrows():
-        # few_shot_df = sample_few_shot_examples(
-        #     train_df, n=num_shots, balanced=True, random_seed=random_seed
-        # )
-        prompt = craft_entity_matching_user_prompt(row, few_shot_df=None)
+        prompt = craft_entity_matching_user_prompt(row, few_shot_df)
 
         all_prompts.append(prompt)
         all_labels.append(row["label"])

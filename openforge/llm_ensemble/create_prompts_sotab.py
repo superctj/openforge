@@ -46,13 +46,14 @@ if __name__ == "__main__":
     random_seed = config.getint("benchmark", "random_seed")
     num_shots = config.getint("benchmark", "num_shots")
 
+    few_shot_df = sample_few_shot_examples(
+        train_df, n=num_shots, balanced=True, random_seed=random_seed
+    )
+
     all_prompts = []
     all_labels = []
 
     for i, row in test_df.iterrows():
-        few_shot_df = sample_few_shot_examples(
-            train_df, n=num_shots, balanced=True, random_seed=random_seed
-        )
         prompt = craft_sotab_user_prompt(row, few_shot_df)
 
         all_prompts.append(prompt)
