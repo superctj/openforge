@@ -64,6 +64,19 @@ def load_openforge_sotab_benchmark(
     return train_df, valid_df, test_df
 
 
+def load_unicorn_entity_matching_benchmark(data_dir: str):
+    train_df = pd.read_json(os.path.join(data_dir, "train.json"))
+    valid_df = pd.read_json(os.path.join(data_dir, "valid.json"))
+    test_df = pd.read_json(os.path.join(data_dir, "test.json"))
+
+    header = ["entity_1", "entity_2", "label"]
+    train_df.columns = header
+    valid_df.columns = header
+    test_df.columns = header
+
+    return train_df, valid_df, test_df
+
+
 def sample_column_values(table_filepath: str, col_id: int, n: int = 10):
     table = pd.read_json(table_filepath, compression="gzip", lines=True)
     table = table.astype(str)
@@ -122,9 +135,6 @@ def craft_sotab_user_prompt(
 ) -> str:
     prompt = """Column semantic types are used to describe semantics of values contained in a table column. Column semantic types from different vocabularies or ontologies can have the same meaning. Determine whether two semantic types are equivelant. For each input semantic type, you will also be provided with sample column values from columns labeled with the input semantic type."""  # noqa: E501
 
-    # For example:
-
-    # """  # noqa: E501
     if not few_shot_df.empty:
         prompt += """\n\nFor example,\n\n"""
 
