@@ -13,5 +13,5 @@ source ~/.bash_profile
 conda activate openforge-gpu
 
 python ./openforge/llm_ensemble/msft_phi3.py \
-    --config_path=./openforge/llm_ensemble/exp_configs/em-wa_5-shots/gemma-1.1-7b-it.ini \
+    --config_path=./openforge/llm_ensemble/exp_configs/em-wa_10-shots/gemma-1.1-7b-it.ini \
     --mode=inference
