@@ -6,6 +6,10 @@ import re
 import pandas as pd
 
 
+ID2LABEL = {0: "NEGATIVE", 1: "POSITIVE"}
+LABEL2ID = {"NEGATIVE": 0, "POSITIVE": 1}
+
+
 def load_openforge_sotab_split(
     split_filepath: str, logger: logging.Logger = None
 ) -> pd.DataFrame:
