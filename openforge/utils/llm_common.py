@@ -6,8 +6,8 @@ import re
 import pandas as pd
 
 
-ID2LABEL = {0: "NEGATIVE", 1: "POSITIVE"}
-LABEL2ID = {"NEGATIVE": 0, "POSITIVE": 1}
+ID2LABEL = {0: "NONMATCH", 1: "MATCH"}
+LABEL2ID = {"NONMATCH": 0, "MATCH": 1}
 
 
 def load_openforge_sotab_split(
