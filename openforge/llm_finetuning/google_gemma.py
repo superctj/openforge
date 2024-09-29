@@ -2,6 +2,7 @@ import argparse
 import os
 
 import evaluate
+import numpy as np
 import torch
 
 from datasets import Dataset
@@ -21,17 +22,24 @@ from openforge.utils.llm_common import (
 )
 from openforge.utils.util import parse_config
 
-f1 = evaluate.load("f1")
+f1_metric = evaluate.load("f1")
 
 
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
-    predictions = torch.argmax(logits, dim=1)
-    return f1.compute(predictions, references=labels)
+    predictions = np.argmax(logits, axis=-1)
+    return f1_metric.compute(predictions=predictions, references=labels)
 
 
-def encode_entity_matching_input(tokenizer, example):
-    return tokenizer(example["entity_1"], example["entity_2"], truncation=True)
+def encode_entity_matching_input(
+    examples,
+    tokenizer,
+):
+    return tokenizer(
+        examples["entity_1"],
+        examples["entity_2"],
+        truncation=True,
+    )
 
 
 if __name__ == "__main__":
@@ -68,29 +76,51 @@ if __name__ == "__main__":
     valid_dataset = Dataset.from_pandas(valid_df)
     test_dataset = Dataset.from_pandas(test_df)
 
+    model_id = config.get("llm", "model_id")
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+
     tokenized_train_dataset = train_dataset.map(
-        encode_entity_matching_input, batched=True
+        encode_entity_matching_input,
+        batched=True,
+        fn_kwargs={"tokenizer": tokenizer},
+        remove_columns=[
+            "entity_1",
+            "entity_2",
+        ],  # A list of columns to remove after applying the function
     )
     tokenized_valid_dataset = valid_dataset.map(
-        encode_entity_matching_input, batched=True
+        encode_entity_matching_input,
+        batched=True,
+        fn_kwargs={"tokenizer": tokenizer},
+        remove_columns=[
+            "entity_1",
+            "entity_2",
+        ],  # A list of columns to remove after applying the function
     )
     tokenized_test_dataset = test_dataset.map(
-        encode_entity_matching_input, batched=True
+        encode_entity_matching_input,
+        batched=True,
+        fn_kwargs={"tokenizer": tokenizer},
+        remove_columns=[
+            "entity_1",
+            "entity_2",
+        ],  # A list of columns to remove after applying the function
     )
 
-    model_id = config.get("llm", "model_id")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-
     model = AutoModelForSequenceClassification.from_pretrained(
         model_id,
         num_labels=len(ID2LABEL),
         id2label=ID2LABEL,
         label2id=LABEL2ID,
         torch_dtype=torch.bfloat16,
-        device=device,
         trust_remote_code=True,
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    model.to(device)
+
+    # Freeze all layers except the classification head
+    for param in model.base_model.parameters():
+        param.requires_grad = False
 
     # Pad the sentences to the longest length in a batch during collation
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
@@ -103,10 +133,12 @@ if __name__ == "__main__":
         per_device_eval_batch_size=config.getint("llm", "eval_batch_size"),
         num_train_epochs=config.getint("llm", "num_train_epochs"),
         weight_decay=config.getfloat("llm", "weight_decay"),
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=1,  # Only to save the best model
         load_best_model_at_end=True,
+        metric_for_best_model="eval_f1",
+        greater_is_better=True,
     )
 
     trainer = Trainer(
