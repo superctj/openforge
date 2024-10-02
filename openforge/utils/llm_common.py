@@ -205,3 +205,11 @@ def parse_llm_response(response: str) -> int:
         pred = 0
 
     return pred
+
+
+def encode_entity_matching_input(examples, tokenizer):
+    return tokenizer(
+        examples["entity_1"],
+        examples["entity_2"],
+        truncation=True,
+    )
