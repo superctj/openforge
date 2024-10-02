@@ -122,7 +122,7 @@ if __name__ == "__main__":
     peft_config = LoraConfig(
         task_type=TaskType.SEQ_CLS,
         inference_mode=False,
-        target_modules=["q_proj"],
+        target_modules=["q_proj", "v_proj"],
         r=config.getint("llm", "r"),
         lora_alpha=config.getint("llm", "lora_alpha"),
         lora_dropout=config.getfloat("llm", "lora_dropout"),
@@ -155,6 +155,7 @@ if __name__ == "__main__":
         num_train_epochs=config.getint("llm", "num_train_epochs"),
         weight_decay=config.getfloat("llm", "weight_decay"),
         eval_strategy="epoch",
+        logging_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=1,  # Only to save the best model
         load_best_model_at_end=True,
