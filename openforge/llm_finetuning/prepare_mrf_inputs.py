@@ -52,7 +52,7 @@ def prepare_mrf_inputs_for_entity_matching(
 
     # Save the MRF inputs
     output_filepath = os.path.join(output_dir, "mrf_inputs.json")
-    source_df.to_json(output_filepath, orient="records", lines=True)
+    source_df.to_json(output_filepath, orient="records", indent=4)
 
 
 if __name__ == "__main__":
