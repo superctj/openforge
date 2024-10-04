@@ -27,6 +27,7 @@ def prepare_mrf_inputs_for_entity_matching(
     preds: list[int],
     pred_confdc_scores: list[float],
     output_dir: str,
+    split: str,
 ):
     eid = 0
     entity_id_map = {}
@@ -34,16 +35,19 @@ def prepare_mrf_inputs_for_entity_matching(
 
     for _, row in source_df.iterrows():
         e1 = row["entity_1"]
-        e2 = row["entity_2"]
 
         if e1 not in entity_id_map:
             entity_id_map[e1] = eid
             eid += 1
 
+    for _, row in source_df.iterrows():
+        e2 = row["entity_2"]
+
         if e2 not in entity_id_map:
             entity_id_map[e2] = eid
             eid += 1
 
+        e1 = row["entity_1"]
         rv_names.append(f"R_{entity_id_map[e1]}-{entity_id_map[e2]}")
 
     source_df["random_variable_name"] = rv_names
@@ -51,8 +55,33 @@ def prepare_mrf_inputs_for_entity_matching(
     source_df["confidence_score"] = pred_confdc_scores
 
     # Save the MRF inputs
-    output_filepath = os.path.join(output_dir, "mrf_inputs.json")
+    output_filepath = os.path.join(output_dir, f"mrf_{split}_split_inputs.json")
     source_df.to_json(output_filepath, orient="records", indent=4)
+
+
+def get_predictions(model, dataloader, device):
+    preds = []
+    confdc_scores = []
+    labels = []
+
+    for batch in dataloader:
+        inputs = {k: v.to(device) for k, v in batch.items()}
+
+        with torch.no_grad():
+            outputs = model(**inputs)
+
+        logits = outputs.logits
+        batch_preds = logits.argmax(dim=-1)
+
+        preds.extend(batch_preds.tolist())
+        confdc_scores.extend(
+            torch.nn.functional.softmax(logits, dim=-1)
+            .max(dim=-1)
+            .values.tolist()
+        )
+        labels.extend(inputs["labels"].tolist())
+
+    return preds, confdc_scores, labels
 
 
 if __name__ == "__main__":
@@ -83,12 +112,23 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     # Load the dataset
-    _, _, test_df = load_unicorn_entity_matching_benchmark(
+    _, valid_df, test_df = load_unicorn_entity_matching_benchmark(
         config.get("exp", "data_dir")
     )
+    valid_dataset = Dataset.from_pandas(valid_df)
     test_dataset = Dataset.from_pandas(test_df)
 
     tokenizer = AutoTokenizer.from_pretrained(config["llm"]["checkpoint_dir"])
+
+    tokenized_valid_dataset = valid_dataset.map(
+        encode_entity_matching_input,
+        batched=True,
+        fn_kwargs={"tokenizer": tokenizer},
+        remove_columns=[
+            "entity_1",
+            "entity_2",
+        ],  # A list of columns to remove after applying the function
+    )
     tokenized_test_dataset = test_dataset.map(
         encode_entity_matching_input,
         batched=True,
@@ -101,15 +141,29 @@ if __name__ == "__main__":
 
     # Rename the label column to labels because the model expects the argument
     # to be named labels
+    tokenized_valid_dataset = tokenized_valid_dataset.rename_column(
+        "label", "labels"
+    )
     tokenized_test_dataset = tokenized_test_dataset.rename_column(
         "label", "labels"
     )
+
     # Set the format of the dataset to return PyTorch tensors instead of lists
+    tokenized_valid_dataset.set_format(
+        "torch", columns=["input_ids", "attention_mask", "labels"]
+    )
     tokenized_test_dataset.set_format(
         "torch", columns=["input_ids", "attention_mask", "labels"]
     )
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+    valid_dataloader = DataLoader(
+        tokenized_valid_dataset,
+        batch_size=config.getint("llm", "batch_size"),
+        shuffle=False,
+        collate_fn=data_collator,
+    )
     test_dataloader = DataLoader(
         tokenized_test_dataset,
         batch_size=config.getint("llm", "batch_size"),
@@ -130,29 +184,25 @@ if __name__ == "__main__":
     model.to(device)
     model.eval()
 
-    preds = []
-    confdc_scores = []
-    labels = []
+    # Get predictions
+    valid_preds, valid_confdc_scores, valid_labels = get_predictions(
+        model, valid_dataloader, device
+    )
+    log_exp_metrics(
+        "Validation split", valid_labels, valid_preds, logger, multi_class=False
+    )
 
-    for batch in test_dataloader:
-        inputs = {k: v.to(device) for k, v in batch.items()}
-
-        with torch.no_grad():
-            outputs = model(**inputs)
-
-        logits = outputs.logits
-        batch_preds = logits.argmax(dim=-1)
-
-        preds.extend(batch_preds.tolist())
-        confdc_scores.extend(
-            torch.nn.functional.softmax(logits, dim=-1)
-            .max(dim=-1)
-            .values.tolist()
-        )
-        labels.extend(inputs["labels"].tolist())
-
-    log_exp_metrics("test", labels, preds, logger, multi_class=False)
+    test_preds, test_confdc_scores, test_labels = get_predictions(
+        model, test_dataloader, device
+    )
+    log_exp_metrics(
+        "Test split", test_labels, test_preds, logger, multi_class=False
+    )
 
     prepare_mrf_inputs_for_entity_matching(
-        test_df, preds, confdc_scores, output_dir
+        valid_df, valid_preds, valid_confdc_scores, output_dir, split="valid"
+    )
+
+    prepare_mrf_inputs_for_entity_matching(
+        test_df, test_preds, test_confdc_scores, output_dir, split="test"
     )
