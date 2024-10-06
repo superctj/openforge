@@ -15,8 +15,8 @@ from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.llm_common import (
     ID2LABEL,
     LABEL2ID,
-    encode_entity_matching_input,
-    load_unicorn_entity_matching_benchmark,
+    encode_data_matching_input,
+    load_unicorn_benchmark,
 )
 from openforge.utils.prior_model_common import log_exp_metrics
 from openforge.utils.util import parse_config
@@ -29,26 +29,26 @@ def prepare_mrf_inputs_for_entity_matching(
     output_dir: str,
     split: str,
 ):
-    eid = 0
-    entity_id_map = {}
+    oid = 0
+    object_id_map = {}
     rv_names = []
 
     for _, row in source_df.iterrows():
-        e1 = row["entity_1"]
+        o1 = row["object_1"]
 
-        if e1 not in entity_id_map:
-            entity_id_map[e1] = eid
-            eid += 1
+        if o1 not in object_id_map:
+            object_id_map[o1] = oid
+            oid += 1
 
     for _, row in source_df.iterrows():
-        e2 = row["entity_2"]
+        o2 = row["object_2"]
 
-        if e2 not in entity_id_map:
-            entity_id_map[e2] = eid
-            eid += 1
+        if o2 not in object_id_map:
+            object_id_map[o2] = oid
+            oid += 1
 
-        e1 = row["entity_1"]
-        rv_names.append(f"R_{entity_id_map[e1]}-{entity_id_map[e2]}")
+        o1 = row["object_1"]
+        rv_names.append(f"R_{object_id_map[o1]}-{object_id_map[o2]}")
 
     source_df["random_variable_name"] = rv_names
     source_df["prediction"] = preds
@@ -112,30 +112,28 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     # Load the dataset
-    _, valid_df, test_df = load_unicorn_entity_matching_benchmark(
-        config.get("exp", "data_dir")
-    )
+    _, valid_df, test_df = load_unicorn_benchmark(config.get("exp", "data_dir"))
     valid_dataset = Dataset.from_pandas(valid_df)
     test_dataset = Dataset.from_pandas(test_df)
 
     tokenizer = AutoTokenizer.from_pretrained(config["llm"]["checkpoint_dir"])
 
     tokenized_valid_dataset = valid_dataset.map(
-        encode_entity_matching_input,
+        encode_data_matching_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "entity_1",
-            "entity_2",
+            "object_1",
+            "object_2",
         ],  # A list of columns to remove after applying the function
     )
     tokenized_test_dataset = test_dataset.map(
-        encode_entity_matching_input,
+        encode_data_matching_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "entity_1",
-            "entity_2",
+            "object_1",
+            "object_2",
         ],  # A list of columns to remove after applying the function
     )
 

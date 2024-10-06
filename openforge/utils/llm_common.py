@@ -68,12 +68,12 @@ def load_openforge_sotab_benchmark(
     return train_df, valid_df, test_df
 
 
-def load_unicorn_entity_matching_benchmark(data_dir: str):
+def load_unicorn_benchmark(data_dir: str):
     train_df = pd.read_json(os.path.join(data_dir, "train.json"))
     valid_df = pd.read_json(os.path.join(data_dir, "valid.json"))
     test_df = pd.read_json(os.path.join(data_dir, "test.json"))
 
-    header = ["entity_1", "entity_2", "label"]
+    header = ["object_1", "object_2", "label"]
     train_df.columns = header
     valid_df.columns = header
     test_df.columns = header
@@ -207,9 +207,9 @@ def parse_llm_response(response: str) -> int:
     return pred
 
 
-def encode_entity_matching_input(examples, tokenizer):
+def encode_data_matching_input(examples, tokenizer):
     return tokenizer(
-        examples["entity_1"],
-        examples["entity_2"],
+        examples["object_1"],
+        examples["object_2"],
         truncation=True,
     )
