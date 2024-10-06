@@ -3,7 +3,12 @@ import logging
 import os
 import re
 
+import numpy as np
 import pandas as pd
+import torch.nn as nn
+
+from sklearn.utils.class_weight import compute_class_weight
+from transformers import Trainer
 
 
 ID2LABEL = {0: "NONMATCH", 1: "MATCH"}
@@ -66,6 +71,48 @@ def load_openforge_sotab_benchmark(
     test_df = load_openforge_sotab_split(test_filepath, logger)
 
     return train_df, valid_df, test_df
+
+
+def preprocess_imbalanced_dataset(
+    df: pd.DataFrame, factor=10, random_seed: int = 42
+) -> tuple[pd.DataFrame, np.array]:
+    """Preprocess an imbalanced dataset by undersampling the majority class if
+    the majority class is `factor` times bigger than the minority class.
+
+    Args:
+        df: The input DataFrame.
+        random_seed: The random seed for reproducibility.
+
+    Returns:
+        The preprocessed DataFrame and class weights for the preprocessed
+        dataset.
+    """
+
+    minority_class = df[df["label"] == 1]
+    majority_class = df[df["label"] == 0]
+
+    n_minority = len(minority_class)
+    n_majority = len(majority_class)
+
+    preprocessed_df = df
+
+    if n_minority * factor < n_majority:
+        majority_class = majority_class.sample(
+            n_minority * factor, random_state=random_seed
+        )
+
+        preprocessed_df = pd.concat([minority_class, majority_class])
+        preprocessed_df = preprocessed_df.sample(
+            frac=1, random_state=random_seed
+        )
+
+    class_weights = compute_class_weight(
+        class_weight="balanced",
+        classes=np.array([0, 1]),
+        y=preprocessed_df["label"],
+    )
+
+    return preprocessed_df, class_weights
 
 
 def load_unicorn_benchmark(data_dir: str):
@@ -213,3 +260,17 @@ def encode_data_matching_input(examples, tokenizer):
         examples["object_2"],
         truncation=True,
     )
+
+
+class CustomTrainer(Trainer):
+    def __init__(self, class_weights, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        loss = nn.CrossEntropyLoss(weight=self.class_weights)(logits, labels)
+
+        return (loss, outputs) if return_outputs else loss
