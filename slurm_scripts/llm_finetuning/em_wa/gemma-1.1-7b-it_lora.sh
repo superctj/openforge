@@ -13,4 +13,4 @@ source ~/.bash_profile
 conda activate huggingface
 
 python ./openforge/llm_finetuning/google_gemma_lora.py \
-    --config_path=./openforge/llm_finetuning/exp_configs/gemma-1.1-7b-it_lora.ini
+    --config_path=./openforge/llm_finetuning/exp_configs/entity_matching/gemma-1.1-7b-it_lora.ini
