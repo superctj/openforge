@@ -11,15 +11,17 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     DataCollatorWithPadding,
-    Trainer,
     TrainingArguments,
 )
 
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.llm_common import (
+    CustomTrainer,
     ID2LABEL,
     LABEL2ID,
-    load_unicorn_entity_matching_benchmark,
+    encode_data_matching_input,
+    load_unicorn_benchmark,
+    preprocess_imbalanced_dataset,
 )
 from openforge.utils.util import parse_config
 
@@ -41,17 +43,6 @@ def compute_metrics(eval_pred):
     ]
 
     return {"f1": f1, "precision": precision, "recall": recall}
-
-
-def encode_entity_matching_input(
-    examples,
-    tokenizer,
-):
-    return tokenizer(
-        examples["entity_1"],
-        examples["entity_2"],
-        truncation=True,
-    )
 
 
 if __name__ == "__main__":
@@ -81,9 +72,13 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
-    train_df, valid_df, test_df = load_unicorn_entity_matching_benchmark(
+    train_df, valid_df, test_df = load_unicorn_benchmark(
         config.get("exp", "data_dir")
     )
+    train_df, class_weights = preprocess_imbalanced_dataset(
+        train_df, random_seed=config.getint("exp", "random_seed")
+    )
+
     train_dataset = Dataset.from_pandas(train_df)
     valid_dataset = Dataset.from_pandas(valid_df)
     test_dataset = Dataset.from_pandas(test_df)
@@ -92,30 +87,30 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 
     tokenized_train_dataset = train_dataset.map(
-        encode_entity_matching_input,
+        encode_data_matching_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "entity_1",
-            "entity_2",
+            "object_1",
+            "object_2",
         ],  # A list of columns to remove after applying the function
     )
     tokenized_valid_dataset = valid_dataset.map(
-        encode_entity_matching_input,
+        encode_data_matching_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "entity_1",
-            "entity_2",
+            "object_1",
+            "object_2",
         ],  # A list of columns to remove after applying the function
     )
     tokenized_test_dataset = test_dataset.map(
-        encode_entity_matching_input,
+        encode_data_matching_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "entity_1",
-            "entity_2",
+            "object_1",
+            "object_2",
         ],  # A list of columns to remove after applying the function
     )
 
@@ -128,7 +123,7 @@ if __name__ == "__main__":
         lora_dropout=config.getfloat("llm", "lora_dropout"),
     )
 
-    # device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model = AutoModelForSequenceClassification.from_pretrained(
         model_id,
         num_labels=len(ID2LABEL),
@@ -163,7 +158,7 @@ if __name__ == "__main__":
         greater_is_better=True,
     )
 
-    trainer = Trainer(
+    trainer = CustomTrainer(
         model=model,
         args=training_args,
         tokenizer=tokenizer,
@@ -171,6 +166,9 @@ if __name__ == "__main__":
         eval_dataset=tokenized_valid_dataset,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
+        class_weights=torch.tensor(class_weights, dtype=torch.float32).to(
+            device
+        ),
     )
 
     trainer.train()
