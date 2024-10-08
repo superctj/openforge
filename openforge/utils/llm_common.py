@@ -128,7 +128,9 @@ def load_unicorn_benchmark(data_dir: str):
     return train_df, valid_df, test_df
 
 
-def sample_column_values(table_filepath: str, col_id: int, n: int = 10):
+def sample_column_values(
+    table_filepath: str, col_id: int, n: int = 10, max_len: int = 800
+):
     table = pd.read_json(table_filepath, compression="gzip", lines=True)
     table = table.astype(str)
     uniq_vals = table.iloc[:, col_id].dropna().unique().tolist()
@@ -137,7 +139,7 @@ def sample_column_values(table_filepath: str, col_id: int, n: int = 10):
     sample = uniq_vals[:k]
 
     # Ballpark constraint on the length of the inputs for few-shot learning
-    while len(" ".join(sample)) > 800:
+    while len(" ".join(sample)) > max_len:
         k -= 1
         sample = uniq_vals[:k]
 
@@ -226,6 +228,41 @@ Output:
             test_record["label_2_table_path"], test_record["label_2_col_idx"]
         ),
     )
+
+    return prompt
+
+
+def craft_sotab_entailment_prompt(
+    data_record: pd.Series,
+    few_shot_df: pd.DataFrame = None,
+    num_samples: int = 10,
+    root_dir: str = None,
+) -> tuple[str, str, list[str]]:
+    if root_dir:
+        label_1_table_path = data_record["label_1_table_path"].replace(
+            "/ssd/congtj/openforge/sotab_v2", root_dir
+        )
+        label_2_table_path = data_record["label_2_table_path"].replace(
+            "/ssd/congtj/openforge/sotab_v2", root_dir
+        )
+    else:
+        label_1_table_path = data_record["label_1_table_path"]
+        label_2_table_path = data_record["label_2_table_path"]
+
+    label_1_sample_values = sample_column_values(
+        label_1_table_path,
+        data_record["label_1_col_idx"],
+        n=num_samples,
+        max_len=300,
+    )
+    label_2_sample_values = sample_column_values(
+        label_2_table_path,
+        data_record["label_2_col_idx"],
+        n=num_samples,
+        max_len=300,
+    )
+
+    prompt = f"Semantic type 1 has name '{data_record['label_1_processed']}' and sample values '{label_1_sample_values}'; Semantic type 2 has name '{data_record['label_2_processed']}' and sample values '{label_2_sample_values}'."  # noqa: E501
 
     return prompt
 
