@@ -232,6 +232,78 @@ Output:
     return prompt
 
 
+def craft_sotab_user_prompt_w_single_token_response(
+    data_record: pd.Series,
+    few_shot_df: pd.DataFrame,
+    num_samples: int = 10,
+    root_dir: str = None,
+) -> str:
+    prompt = """Column semantic types are used to describe semantics of values contained in a table column. Column semantic types from different vocabularies or ontologies can have the same meaning. Determine whether two semantic types are equivelant. For each input semantic type, you will also be provided with sample column values from columns labeled with the input semantic type."""  # noqa: E501
+
+    if not few_shot_df.empty:
+        prompt += """\n\nFor example,\n\n"""
+
+        fewshot_prompt = "\n\n".join(
+            [
+                "Input:\nSemantic type 1: {}\nSample column values for type 1: {}\n\nSemantic type 2: {}\nSample column values for type 2: {}\n\nOutput:\n{}".format(  # noqa: E501
+                    row[0],
+                    sample_column_values(row[3], row[5]),
+                    row[1],
+                    sample_column_values(row[4], row[6]),
+                    '{"match": true}' if row[2] else '{"match": false}',
+                )
+                for row in few_shot_df.values.tolist()
+            ]
+        )
+
+        prompt += fewshot_prompt
+
+    if root_dir:
+        label_1_table_path = data_record["label_1_table_path"].replace(
+            "/ssd/congtj/openforge/sotab_v2", root_dir
+        )
+        label_2_table_path = data_record["label_2_table_path"].replace(
+            "/ssd/congtj/openforge/sotab_v2", root_dir
+        )
+    else:
+        label_1_table_path = data_record["label_1_table_path"]
+        label_2_table_path = data_record["label_2_table_path"]
+
+    label_1_sample_values = sample_column_values(
+        label_1_table_path,
+        data_record["label_1_col_idx"],
+        n=num_samples,
+        max_len=800,
+    )
+    label_2_sample_values = sample_column_values(
+        label_2_table_path,
+        data_record["label_2_col_idx"],
+        n=num_samples,
+        max_len=800,
+    )
+
+    prompt += """
+
+Now, for the following semantic type pairs, please determine if they are equivalent. Return your prediction with a single token 'n' or 'e' where 'n' represents non-equivalent and 'e' represents equivalent.
+
+Input:
+Semantic type 1: {}
+Sample column values for type 1: {}
+
+Semantic type 2: {}
+Sample column values for type 2: {}
+
+Output:
+""".format(  # noqa: E501
+        data_record["label_1_processed"],
+        label_1_sample_values,
+        data_record["label_2_processed"],
+        label_2_sample_values,
+    )
+
+    return prompt
+
+
 def craft_sotab_entailment_prompt(
     data_record: pd.Series,
     few_shot_df: pd.DataFrame = None,
