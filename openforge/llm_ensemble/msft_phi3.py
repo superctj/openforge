@@ -1,6 +1,7 @@
 import argparse
 import os
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -93,6 +94,68 @@ def get_prediction_from_pipeline(
     pred = 0
 
     return pred
+
+
+def get_llm_prediction_from_single_token(
+    model,
+    tokenizer,
+    user_prompt: str,
+    system_prompt: str = None,
+    device: str = "cuda",
+    logger=None,
+) -> int:
+    if not system_prompt:
+        messages = [
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ]
+    else:
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ]
+
+    formatted_messages = tokenizer.apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    inputs = tokenizer(formatted_messages, return_tensors="pt").to(device)
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+        logits = outputs.logits
+
+    next_token_logits = logits[0, -1, :]
+    next_token_probs = torch.softmax(next_token_logits, dim=-1)
+
+    candidate_tokens = ["n", "e"]
+    candidate_token_ids = [
+        tokenizer.encode(token, add_special_tokens=False)[0]
+        for token in candidate_tokens
+    ]
+    candidate_probs = np.array(
+        [next_token_probs[token_id].item() for token_id in candidate_token_ids]
+    )
+    normalized_probs = candidate_probs / np.sum(candidate_probs)
+
+    pred = np.argmax(normalized_probs)
+    confdc_score = normalized_probs[pred]
+
+    if logger:
+        logger.info("Response:")
+        logger.info(f"Candidate tokens: {candidate_tokens}")
+        logger.info(f"Candidate token ids: {candidate_token_ids}")
+        logger.info(f"Raw probabilities: {candidate_probs}")
+        logger.info(f"Normalized probabilities: {normalized_probs}")
+
+    return pred, confdc_score
 
 
 if __name__ == "__main__":
@@ -188,12 +251,20 @@ if __name__ == "__main__":
                 max_new_tokens = 50
 
             prompt = row["prompt"]
-            pred = get_llm_prediction(
+            # pred = get_llm_prediction(
+            #     model,
+            #     tokenizer,
+            #     user_prompt=prompt,
+            #     system_prompt=system_prompt,
+            #     max_new_tokens=max_new_tokens,
+            #     device=device,
+            #     logger=logger,
+            # )
+            pred, confdc_score = get_llm_prediction_from_single_token(
                 model,
                 tokenizer,
                 user_prompt=prompt,
                 system_prompt=system_prompt,
-                max_new_tokens=max_new_tokens,
                 device=device,
                 logger=logger,
             )
