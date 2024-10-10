@@ -339,6 +339,14 @@ def craft_sotab_entailment_prompt(
     return prompt
 
 
+def craft_data_matching_entailment_prompt(
+    data_record: pd.Series, few_shot_df: pd.DataFrame = None
+) -> str:
+    prompt = f"""Data object 1 has description: {data_record["object_1"]}; Data object 2 has description: {data_record["object_2"]}."""  # noqa: E501
+
+    return prompt
+
+
 def parse_llm_response(response: str) -> int:
     logger = logging.getLogger()
 
