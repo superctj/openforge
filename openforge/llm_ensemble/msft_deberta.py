@@ -12,10 +12,10 @@ from openforge.utils.prior_model_common import log_exp_metrics
 from openforge.utils.util import parse_config
 
 
-HYPOTHESIS_TEMPLATE = "The two semantic types are semantically {}"
+HYPOTHESIS_TEMPLATE = "The two data objects are {}"
 CLASS_LABELS = [
-    "non-equivalent",
-    "equivalent",
+    "not semantically equivalent",
+    "semantically equivalent",
 ]
 
 
