@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 from openforge.utils.custom_logging import create_custom_logger
-from openforge.utils.llm_common import load_unicorn_entity_matching_benchmark
+from openforge.utils.llm_common import load_unicorn_benchmark
 from openforge.utils.util import parse_config
 
 
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     random_seed = config.getint("benchmark", "random_seed")
     num_shots = config.getint("benchmark", "num_shots")
 
-    train_df, valid_df, test_df = load_unicorn_entity_matching_benchmark(
+    train_df, valid_df, test_df = load_unicorn_benchmark(
         config.get("benchmark", "data_dir")
     )
 
