@@ -133,17 +133,19 @@ def get_llm_prediction_from_single_token(
         logits = outputs.logits
 
     next_token_logits = logits[0, -1, :]
-    next_token_probs = torch.softmax(next_token_logits, dim=-1)
+    # next_token_probs = torch.softmax(next_token_logits, dim=-1)
 
     candidate_tokens = ["n", "e"]
     candidate_token_ids = [
         tokenizer.encode(token, add_special_tokens=False)[0]
         for token in candidate_tokens
     ]
-    candidate_probs = np.array(
-        [next_token_probs[token_id].item() for token_id in candidate_token_ids]
+    candidate_logits = np.array(
+        [next_token_logits[token_id].item() for token_id in candidate_token_ids]
     )
-    normalized_probs = candidate_probs / np.sum(candidate_probs)
+    normalized_probs = np.exp(candidate_logits) / np.sum(
+        np.exp(candidate_logits)
+    )
 
     pred = np.argmax(normalized_probs)
     confdc_score = normalized_probs[pred]
@@ -152,7 +154,7 @@ def get_llm_prediction_from_single_token(
         logger.info("Response:")
         logger.info(f"Candidate tokens: {candidate_tokens}")
         logger.info(f"Candidate token ids: {candidate_token_ids}")
-        logger.info(f"Raw probabilities: {candidate_probs}")
+        logger.info(f"Raw logits: {candidate_logits}")
         logger.info(f"Normalized probabilities: {normalized_probs}")
 
     return pred, confdc_score
