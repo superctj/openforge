@@ -11,6 +11,7 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     DataCollatorWithPadding,
+    Trainer,
     TrainingArguments,
 )
 
@@ -90,9 +91,12 @@ if __name__ == "__main__":
     logger.info(f"Sample data:\n{train_df['object_1'].head().to_list()}")
     logger.info(f"Sample data:\n{train_df['object_2'].head().to_list()}")
 
-    train_df, class_weights = preprocess_imbalanced_dataset(
-        train_df, random_seed=config.getint("exp", "random_seed")
-    )
+    handle_class_imbalance = config.getboolean("llm", "handle_class_imbalance")
+
+    if handle_class_imbalance:
+        train_df, class_weights = preprocess_imbalanced_dataset(
+            train_df, random_seed=config.getint("exp", "random_seed")
+        )
 
     train_dataset = Dataset.from_pandas(train_df)
     valid_dataset = Dataset.from_pandas(valid_df)
@@ -178,18 +182,29 @@ if __name__ == "__main__":
         greater_is_better=True,
     )
 
-    trainer = CustomTrainer(
-        model=model,
-        args=training_args,
-        tokenizer=tokenizer,
-        train_dataset=tokenized_train_dataset,
-        eval_dataset=tokenized_valid_dataset,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics,
-        class_weights=torch.tensor(class_weights, dtype=torch.float32).to(
-            device
-        ),
-    )
+    if handle_class_imbalance:
+        trainer = CustomTrainer(
+            model=model,
+            args=training_args,
+            tokenizer=tokenizer,
+            train_dataset=tokenized_train_dataset,
+            eval_dataset=tokenized_valid_dataset,
+            data_collator=data_collator,
+            compute_metrics=compute_metrics,
+            class_weights=torch.tensor(class_weights, dtype=torch.float32).to(
+                device
+            ),
+        )
+    else:
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            tokenizer=tokenizer,
+            train_dataset=tokenized_train_dataset,
+            eval_dataset=tokenized_valid_dataset,
+            data_collator=data_collator,
+            compute_metrics=compute_metrics,
+        )
 
     trainer.train()
 
