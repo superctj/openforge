@@ -128,18 +128,45 @@ def load_unicorn_benchmark(data_dir: str):
     return train_df, valid_df, test_df
 
 
+def flatten_list(lst):
+    for item in lst:
+        if isinstance(item, list):
+            yield from flatten_list(item)
+        else:
+            if item:
+                yield item
+
+
 def sample_column_values(
     table_filepath: str, col_id: int, n: int = 10, max_len: int = 800
 ):
     table = pd.read_json(table_filepath, compression="gzip", lines=True)
-    table = table.astype(str)
-    uniq_vals = table.iloc[:, col_id].dropna().unique().tolist()
+
+    try:
+        uniq_vals = (
+            table.iloc[:, col_id]
+            .dropna()
+            .apply(
+                lambda x: (
+                    ", ".join(list(flatten_list(x)))
+                    if isinstance(x, list)
+                    else x
+                )
+            )
+            .unique()
+            .tolist()
+        )
+        uniq_vals = [str(val).split(", ") for val in uniq_vals if val]
+        uniq_vals = list(flatten_list(uniq_vals))
+    except TypeError as e:
+        print(table.iloc[:, col_id].tolist())
+        raise e
 
     k = n
     sample = uniq_vals[:k]
 
     # Ballpark constraint on the length of the inputs for few-shot learning
-    while len(" ".join(sample)) > max_len:
+    while len(", ".join(sample)) > max_len:
         k -= 1
         sample = uniq_vals[:k]
 
@@ -337,6 +364,81 @@ def craft_sotab_entailment_prompt(
     prompt = f"Semantic type 1 has name '{data_record['label_1_processed']}' and sample values '{label_1_sample_values}'; Semantic type 2 has name '{data_record['label_2_processed']}' and sample values '{label_2_sample_values}'."  # noqa: E501
 
     return prompt
+
+
+def prepare_sotab_for_sequence_classification(
+    df: pd.DataFrame,
+    root_dir: str = None,
+    num_samples: int = 5,
+    max_len: int = 900,
+) -> pd.DataFrame:
+    selected_df = df.loc[
+        :,
+        [
+            "label_1_processed",
+            "label_2_processed",
+            "label_1_table_path",
+            "label_2_table_path",
+            "label_1_col_idx",
+            "label_2_col_idx",
+            "relation_variable_label",
+            "relation_variable_name",
+        ],
+    ]
+
+    if root_dir:
+        selected_df.loc[:, "label_1_table_path"] = selected_df[
+            "label_1_table_path"
+        ].apply(lambda x: x.replace("/ssd/congtj/openforge/sotab_v2", root_dir))
+
+        selected_df.loc[:, "label_2_table_path"] = selected_df[
+            "label_2_table_path"
+        ].apply(lambda x: x.replace("/ssd/congtj/openforge/sotab_v2", root_dir))
+
+    selected_df.loc[:, "object_1"] = selected_df.apply(
+        lambda x: x["label_1_processed"]
+        + ": "
+        + ", ".join(
+            sample_column_values(
+                x["label_1_table_path"],
+                x["label_1_col_idx"],
+                n=num_samples,
+                max_len=max_len,
+            )
+        ),
+        axis=1,
+    )
+
+    selected_df.loc[:, "object_2"] = selected_df.apply(
+        lambda x: x["label_2_processed"]
+        + ": "
+        + ", ".join(
+            sample_column_values(
+                x["label_2_table_path"],
+                x["label_2_col_idx"],
+                n=num_samples,
+                max_len=max_len,
+            )
+        ),
+        axis=1,
+    )
+
+    selected_df = selected_df.loc[
+        :,
+        [
+            "object_1",
+            "object_2",
+            "relation_variable_label",
+            "relation_variable_name",
+        ],
+    ]
+
+    # Renmame column relation_variable_label to label
+    selected_df = selected_df.rename(
+        columns={"relation_variable_label": "label"}
+    )
+
+    return selected_df
 
 
 def craft_data_matching_entailment_prompt(
