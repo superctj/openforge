@@ -211,21 +211,38 @@ def sample_few_shot_examples(
 
 
 def craft_sotab_user_prompt(
-    test_record: dict, few_shot_df: pd.DataFrame
+    row: pd.Series,
+    few_shot_df: pd.DataFrame,
+    root_dir: str = None,
 ) -> str:
-    prompt = """Column semantic types are used to describe semantics of values contained in a table column. Column semantic types from different vocabularies or ontologies can have the same meaning. Determine whether two semantic types are equivelant. For each input semantic type, you will also be provided with sample column values from columns labeled with the input semantic type."""  # noqa: E501
+    prompt = """Semantic column types are used to describe semantics of values contained in a table column, i.e., what domains these column values belong to. Determine whether two semantic column types are equivelant. For each input type, you will also be provided with sample column values from columns labeled with the type."""  # noqa: E501
 
-    if not few_shot_df.empty:
+    if root_dir:
+        label_1_table_path = row["label_1_table_path"].replace(
+            "/ssd/congtj/openforge/sotab_v2", root_dir
+        )
+        label_2_table_path = row["label_2_table_path"].replace(
+            "/ssd/congtj/openforge/sotab_v2", root_dir
+        )
+    else:
+        label_1_table_path = row["label_1_table_path"]
+        label_2_table_path = row["label_2_table_path"]
+
+    if few_shot_df is not None and not few_shot_df.empty:
         prompt += """\n\nFor example,\n\n"""
 
         fewshot_prompt = "\n\n".join(
             [
                 "Input:\nSemantic type 1: {}\nSample column values for type 1: {}\n\nSemantic type 2: {}\nSample column values for type 2: {}\n\nOutput:\n{}".format(  # noqa: E501
                     row[0],
-                    sample_column_values(row[3], row[5]),
+                    sample_column_values(label_1_table_path, row[5]),
                     row[1],
-                    sample_column_values(row[4], row[6]),
-                    '{"match": true}' if row[2] else '{"match": false}',
+                    sample_column_values(label_2_table_path, row[6]),
+                    (
+                        '{"equivalent": true}'
+                        if row[2]
+                        else '{"equivalent": false}'
+                    ),
                 )
                 for row in few_shot_df.values.tolist()
             ]
@@ -235,25 +252,21 @@ def craft_sotab_user_prompt(
 
     prompt += """
 
-Now, for the following semantic type pairs, please determine if they are equivalent. Return your prediction in the following JSON format: '{{"match": true}}' or '{{"match": false}}'.
+Now, for the following pair of semantic column types, please determine if they are equivalent. Return your prediction and a confidence score between 0 and 1 in the following JSON format: '{{"equivalent": true, "confidence score":}}' or '{{"equivalent": false, "confidence score":}}'.
 
 Input:
-Semantic type 1: {}
+Semantic column type 1: {}
 Sample column values for type 1: {}
 
-Semantic type 2: {}
+Semantic column type 2: {}
 Sample column values for type 2: {}
 
 Output:
 """.format(  # noqa: E501
-        test_record["label_1_processed"],
-        sample_column_values(
-            test_record["label_1_table_path"], test_record["label_1_col_idx"]
-        ),
-        test_record["label_2_processed"],
-        sample_column_values(
-            test_record["label_2_table_path"], test_record["label_2_col_idx"]
-        ),
+        row["label_1_processed"],
+        sample_column_values(label_1_table_path, row["label_1_col_idx"]),
+        row["label_2_processed"],
+        sample_column_values(label_2_table_path, row["label_2_col_idx"]),
     )
 
     return prompt
@@ -449,6 +462,31 @@ def craft_data_matching_entailment_prompt(
     return prompt
 
 
+def parse_llm_response_on_sotab(response: str) -> int:
+    logger = logging.getLogger()
+
+    pattern = r"{[^}]*}"
+    matches = re.findall(pattern, response)
+
+    if not matches:
+        logger.info(f"No match found in response: {response}")
+        return 0
+
+    json_str = matches[0].strip().replace("'", '"')
+
+    try:
+        pred = int(json.loads(json_str)["equivalent"])
+        confdc_score = float(json.loads(json_str)["confidence score"])
+    except json.JSONDecodeError as e:
+        logger.info(f"Invalid response: {json_str}. Original error: {e}")
+        pred = 0
+    except KeyError as e:
+        logger.info(f"Invalid response: {json_str}. Original error: {e}")
+        pred = 0
+
+    return pred, confdc_score
+
+
 def parse_llm_response(response: str) -> int:
     logger = logging.getLogger()
 
@@ -463,6 +501,7 @@ def parse_llm_response(response: str) -> int:
 
     try:
         pred = int(json.loads(json_str)["match"])
+        confdc_score = float(json.loads(json_str)["confidence score"])
     except json.JSONDecodeError as e:
         logger.info(f"Invalid response: {json_str}. Original error: {e}")
         pred = 0
@@ -470,7 +509,7 @@ def parse_llm_response(response: str) -> int:
         logger.info(f"Invalid response: {json_str}. Original error: {e}")
         pred = 0
 
-    return pred
+    return pred, confdc_score
 
 
 def encode_data_matching_input(examples, tokenizer):
