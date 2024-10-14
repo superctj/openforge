@@ -39,8 +39,9 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
+    data_dir = config.get("benchmark", "data_dir")
     train_df, valid_df, test_df = load_openforge_sotab_benchmark(
-        config.get("benchmark", "data_dir"), logger
+        os.path.join(data_dir, "artifact"), logger
     )
 
     random_seed = config.getint("benchmark", "random_seed")
@@ -52,21 +53,35 @@ if __name__ == "__main__":
 
     all_prompts = []
     all_labels = []
+    all_rv_names = []
 
     for i, row in test_df.iterrows():
-        prompt = craft_sotab_user_prompt(row, few_shot_df)
+        prompt = craft_sotab_user_prompt(row, few_shot_df, root_dir=data_dir)
 
         all_prompts.append(prompt)
         all_labels.append(row["relation_variable_label"])
+        all_rv_names.append(row["relation_variable_name"])
 
         if i == 0:
             logger.info(f"1st prompt:\n{prompt}")
 
-    df = pd.DataFrame({"prompt": all_prompts, "label": all_labels})
-    df.to_json(
-        os.path.join(
-            output_dir, f"sotab_test-w_sample_values-{num_shots}_shots.json"
-        ),
-        orient="records",
-        indent=4,
+    df = pd.DataFrame(
+        {
+            "prompt": all_prompts,
+            "label": all_labels,
+            "random_variable_name": all_rv_names,
+        }
     )
+
+    if num_shots == 0:
+        df.to_json(
+            os.path.join(output_dir, f"test_{num_shots}-shot.json"),
+            orient="records",
+            indent=4,
+        )
+    else:
+        df.to_json(
+            os.path.join(output_dir, f"test_{num_shots}-shots.json"),
+            orient="records",
+            indent=4,
+        )
