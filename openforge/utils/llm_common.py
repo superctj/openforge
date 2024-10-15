@@ -462,7 +462,7 @@ def craft_data_matching_entailment_prompt(
     return prompt
 
 
-def parse_llm_response_on_sotab(response: str) -> int:
+def parse_llm_response(response: str, keyword: str = "equivalent") -> int:
     logger = logging.getLogger()
 
     pattern = r"{[^}]*}"
@@ -475,32 +475,7 @@ def parse_llm_response_on_sotab(response: str) -> int:
     json_str = matches[0].strip().replace("'", '"')
 
     try:
-        pred = int(json.loads(json_str)["equivalent"])
-        confdc_score = float(json.loads(json_str)["confidence score"])
-    except json.JSONDecodeError as e:
-        logger.info(f"Invalid response: {json_str}. Original error: {e}")
-        pred = 0
-    except KeyError as e:
-        logger.info(f"Invalid response: {json_str}. Original error: {e}")
-        pred = 0
-
-    return pred, confdc_score
-
-
-def parse_llm_response(response: str) -> int:
-    logger = logging.getLogger()
-
-    pattern = r"{[^}]*}"
-    matches = re.findall(pattern, response)
-
-    if not matches:
-        logger.info(f"No match found in response: {response}")
-        return 0
-
-    json_str = matches[0].strip().replace("'", '"')
-
-    try:
-        pred = int(json.loads(json_str)["match"])
+        pred = int(json.loads(json_str)[keyword])
         confdc_score = float(json.loads(json_str)["confidence score"])
     except json.JSONDecodeError as e:
         logger.info(f"Invalid response: {json_str}. Original error: {e}")
