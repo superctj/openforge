@@ -252,7 +252,7 @@ def craft_sotab_user_prompt(
 
     prompt += """
 
-Now, for the following pair of semantic column types, please determine if they are equivalent. Return your prediction and a confidence score between 0 and 1 in the following JSON format: '{{"equivalent": true, "confidence score":}}' or '{{"equivalent": false, "confidence score":}}'.
+Now, for the following pair of semantic column types, please determine if they are equivalent. Return your prediction and confidence score in the following JSON format: '{{"equivalent": true, "confidence score":}}' or '{{"equivalent": false, "confidence score":}}'. Confidence score needs to be greater than 0.5 and smaller than 1.
 
 Input:
 Semantic column type 1: {}
