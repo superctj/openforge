@@ -91,12 +91,12 @@ def craft_entity_matching_user_prompt(
 
         fewshot_prompt = "\n\n".join(
             [
-                "Input:\nEntity description 1: {}\nEntity description 2: {}\n\nOutput:\n{}".format(  # noqa: E501
-                    row[0],
-                    row[1],
-                    '{"match": true}' if row[2] else '{"match": false}',
+                "Input:\nInstance 1: {}\nInstance 2: {}\n\nOutput:\n{}".format(  # noqa: E501
+                    row["entity_1"],
+                    row["entity_2"],
+                    '{"match": true}' if row["label"] else '{"match": false}',
                 )
-                for row in few_shot_df.values.tolist()
+                for _, row in few_shot_df.iterrows()
             ]
         )
 
@@ -104,7 +104,7 @@ def craft_entity_matching_user_prompt(
 
     prompt += """
 
-Now, for the following pair of instances, please determine if they refer to the same real-world entity. Return your prediction and confidence score in the following JSON format: '{{"equivalent": true, "confidence score":}}' or '{{"equivalent": false, "confidence score":}}'. Confidence score needs to be greater than 0.5 and smaller than 1.
+Now, for the following pair of instances, please determine if they refer to the same real-world entity. Return your prediction and confidence score in the following JSON format: '{{"match": true, "confidence score":}}' or '{{"match": false, "confidence score":}}'. Confidence score needs to be greater than 0.5 and smaller than 1.
 
 Input:
 Instance 1: {}
