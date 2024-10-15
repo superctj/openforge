@@ -58,7 +58,7 @@ class MRFWrapper:
         num_concepts = 1  # Count the first concept
 
         for row in self.prior_data.itertuples():
-            if row.relation_variable_name.startswith("R_1-"):
+            if row.random_variable_name.startswith("R_1-"):
                 num_concepts += 1
             else:
                 break
@@ -79,7 +79,7 @@ class MRFWrapper:
         log_ternary_table = np.log(np.array(ternary_table))
 
         start = time.time()
-        var_names = self.prior_data["relation_variable_name"].tolist()
+        var_names = self.prior_data["random_variable_name"].tolist()
         variables = vgroup.VarDict(num_states=2, variable_names=var_names)
 
         fg = fgraph.FactorGraph(variables)
@@ -94,7 +94,7 @@ class MRFWrapper:
         # add unary factors
         start = time.time()
         for row in self.prior_data.itertuples():
-            var_name = row.relation_variable_name
+            var_name = row.random_variable_name
             var = variables.__getitem__(var_name)
             variables_for_unary_factors.append([var])
 
@@ -267,7 +267,8 @@ if __name__ == "__main__":
         best_hp_config = tuning_engine.run()
 
         test_mrf_wrapper = MRFWrapper(
-            config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=True
+            config.get("mrf_lbp", "test_filepath"),
+            tune_lbp_hp=config.getboolean("mrf_lbp", "tune_lbp_hp"),
         )
     else:
         assert args.mode == "inference", (
