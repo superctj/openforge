@@ -12,6 +12,49 @@ from openforge.utils.llm_common import (
 from openforge.utils.util import parse_config
 
 
+def create_prompts_per_split(
+    input_df: pd.DataFrame,
+    few_shot_df: pd.DataFrame,
+    data_dir: str,
+    split: str,
+    num_shots: int,
+):
+    all_prompts = []
+    all_labels = []
+    all_rv_names = []
+
+    for i, row in input_df.iterrows():
+        prompt = craft_sotab_user_prompt(row, few_shot_df, root_dir=data_dir)
+
+        all_prompts.append(prompt)
+        all_labels.append(row["relation_variable_label"])
+        all_rv_names.append(row["relation_variable_name"])
+
+        if i == 0:
+            logger.info(f"1st prompt:\n{prompt}")
+
+    output_df = pd.DataFrame(
+        {
+            "prompt": all_prompts,
+            "label": all_labels,
+            "random_variable_name": all_rv_names,
+        }
+    )
+
+    if num_shots == 0:
+        output_df.to_json(
+            os.path.join(output_dir, f"{split}_{num_shots}-shot.json"),
+            orient="records",
+            indent=4,
+        )
+    else:
+        output_df.to_json(
+            os.path.join(output_dir, f"{split}_{num_shots}-shots.json"),
+            orient="records",
+            indent=4,
+        )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -51,37 +94,10 @@ if __name__ == "__main__":
         train_df, n=num_shots, balanced=True, random_seed=random_seed
     )
 
-    all_prompts = []
-    all_labels = []
-    all_rv_names = []
-
-    for i, row in test_df.iterrows():
-        prompt = craft_sotab_user_prompt(row, few_shot_df, root_dir=data_dir)
-
-        all_prompts.append(prompt)
-        all_labels.append(row["relation_variable_label"])
-        all_rv_names.append(row["relation_variable_name"])
-
-        if i == 0:
-            logger.info(f"1st prompt:\n{prompt}")
-
-    df = pd.DataFrame(
-        {
-            "prompt": all_prompts,
-            "label": all_labels,
-            "random_variable_name": all_rv_names,
-        }
+    create_prompts_per_split(
+        valid_df, few_shot_df, data_dir, split="valid", num_shots=num_shots
     )
 
-    if num_shots == 0:
-        df.to_json(
-            os.path.join(output_dir, f"test_{num_shots}-shot.json"),
-            orient="records",
-            indent=4,
-        )
-    else:
-        df.to_json(
-            os.path.join(output_dir, f"test_{num_shots}-shots.json"),
-            orient="records",
-            indent=4,
-        )
+    create_prompts_per_split(
+        test_df, few_shot_df, data_dir, split="test", num_shots=num_shots
+    )
