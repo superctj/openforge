@@ -257,7 +257,8 @@ if __name__ == "__main__":
             prompt = row["prompt"]
             confdc_score = -1
 
-            while confdc_score == -1:
+            count = 0
+            while confdc_score <= 0.5 or confdc_score >= 1:
                 pred, confdc_score = get_llm_prediction(
                     model,
                     tokenizer,
@@ -267,6 +268,11 @@ if __name__ == "__main__":
                     device=device,
                     logger=logger,
                 )
+
+                count += 1
+                if count >= 10:
+                    confdc_score = 0.95
+                    break
             # pred, confdc_score = get_llm_prediction_from_single_token(
             #     model,
             #     tokenizer,
