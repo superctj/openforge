@@ -8,10 +8,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from openforge.utils.custom_logging import create_custom_logger
-from openforge.utils.llm_common import (
-    parse_llm_response,
-    parse_llm_response_on_sotab,
-)
+from openforge.utils.llm_common import parse_llm_response_on_sotab
 from openforge.utils.prior_model_common import log_exp_metrics
 from openforge.utils.util import parse_config
 
@@ -61,10 +58,11 @@ def get_llm_prediction(
     response = tokenizer.batch_decode(
         outputs[:, inputs["input_ids"].shape[1] :]
     )[0]
-    pred, confdc_score = parse_llm_response_on_sotab(response)
 
     if logger:
         logger.info(f"Response: {response}")
+
+    pred, confdc_score = parse_llm_response_on_sotab(response)
 
     return pred, confdc_score
 
@@ -257,15 +255,18 @@ if __name__ == "__main__":
                 max_new_tokens = 50
 
             prompt = row["prompt"]
-            pred, confdc_score = get_llm_prediction(
-                model,
-                tokenizer,
-                user_prompt=prompt,
-                system_prompt=system_prompt,
-                max_new_tokens=max_new_tokens,
-                device=device,
-                logger=logger,
-            )
+            confdc_score = -1
+
+            while confdc_score == -1:
+                pred, confdc_score = get_llm_prediction(
+                    model,
+                    tokenizer,
+                    user_prompt=prompt,
+                    system_prompt=system_prompt,
+                    max_new_tokens=max_new_tokens,
+                    device=device,
+                    logger=logger,
+                )
             # pred, confdc_score = get_llm_prediction_from_single_token(
             #     model,
             #     tokenizer,
@@ -288,7 +289,8 @@ if __name__ == "__main__":
                 break
 
         test_df["prediction"] = all_predictions
-        test_df["confidence_score"] = confdc_score
+        test_df["confidence_score"] = all_confdc_scores
+
         output_filename = data_filepath.split("/")[-1].split(".")[0]
         output_filepath = os.path.join(output_dir, f"{output_filename}.json")
         test_df.to_json(output_filepath, orient="records", indent=4)
