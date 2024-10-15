@@ -380,10 +380,10 @@ def log_exp_metrics(
     )
 
     logger.info(f"Split: {split}")
-    logger.info(f"  Accuracy: {accuracy:.2f}")
-    logger.info(f"  F1 score: {f1:.2f}")
-    logger.info(f"  Precision: {precision:.2f}")
-    logger.info(f"  Recall: {recall:.2f}\n")
+    logger.info(f"  Accuracy: {accuracy:.3f}")
+    logger.info(f"  F1 score: {f1:.3f}")
+    logger.info(f"  Precision: {precision:.3f}")
+    logger.info(f"  Recall: {recall:.3f}\n")
 
 
 def log_exp_records(

@@ -41,7 +41,15 @@ def evaluate_inference_results(
                 "No ground truth attribute found in prior data."
             )
 
-        var_name = row.relation_variable_name
+        if hasattr(row, "relation_variable_name"):
+            var_name = row.relation_variable_name
+        elif hasattr(row, "random_variable_name"):
+            var_name = row.random_variable_name
+        else:
+            raise AttributeError(
+                "No variable name attribute found in prior data."
+            )
+
         pred = int(results[var_name])
 
         y_true.append(var_label)
@@ -68,7 +76,9 @@ def evaluate_inference_results(
                 f"{confdc_score:.2f})"
             )
         else:
-            raise AttributeError("No confidence score found in prior data.")
+            raise AttributeError(
+                "No confidence score attribute found in prior data."
+            )
 
         y_prior.append(prior_pred)
 
@@ -86,11 +96,11 @@ def evaluate_inference_results(
         logger.info("-" * 80)
         logger.info(f"Number of test instances: {len(prior_data)}")
         logger.info(
-            f"Prior test accuracy: {accuracy_score(y_true, y_prior):.2f}"
+            f"Prior test accuracy: {accuracy_score(y_true, y_prior):.3f}"
         )
-        logger.info(f"Prior F1 score: {f1_score(y_true, y_prior):.2f}")
-        logger.info(f"Prior precision: {precision_score(y_true, y_prior):.2f}")
-        logger.info(f"Prior recall: {recall_score(y_true, y_prior):.2f}")
+        logger.info(f"Prior F1 score: {f1_score(y_true, y_prior):.3f}")
+        logger.info(f"Prior precision: {precision_score(y_true, y_prior):.3f}")
+        logger.info(f"Prior recall: {recall_score(y_true, y_prior):.3f}")
 
     mrf_accuracy = accuracy_score(y_true, y_pred)
     mrf_f1_score = f1_score(y_true, y_pred)
@@ -98,10 +108,10 @@ def evaluate_inference_results(
     mrf_recall = recall_score(y_true, y_pred)
 
     if log_predictions:
-        logger.info(f"MRF test accuracy: {mrf_accuracy:.2f}")
-        logger.info(f"MRF F1 score: {mrf_f1_score:.2f}")
-        logger.info(f"MRF precision: {mrf_precision:.2f}")
-        logger.info(f"MRF recall: {mrf_recall:.2f}")
+        logger.info(f"MRF test accuracy: {mrf_accuracy:.3f}")
+        logger.info(f"MRF F1 score: {mrf_f1_score:.3f}")
+        logger.info(f"MRF precision: {mrf_precision:.3f}")
+        logger.info(f"MRF recall: {mrf_recall:.3f}")
 
     return mrf_f1_score, mrf_accuracy, mrf_precision, mrf_recall
 
