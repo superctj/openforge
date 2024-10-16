@@ -248,19 +248,10 @@ if __name__ == "__main__":
         ).create_hp_space()
 
         # Create MRF wrapper
-        if config.getboolean("mrf_lbp", "tune_lbp_hp"):
-            mrf_wrapper = MRFWrapper(
-                config.get("mrf_lbp", "validation_filepath"),
-                tune_lbp_hp=True,
-            )
-        else:
-            mrf_wrapper = MRFWrapper(
-                config.get("mrf_lbp", "validation_filepath"),
-                tune_lbp_hp=False,
-                num_iters=config.getint("mrf_lbp", "num_iters"),
-                damping=config.getfloat("mrf_lbp", "damping"),
-                temperature=config.getfloat("mrf_lbp", "temperature"),
-            )
+        mrf_wrapper = MRFWrapper(
+            config.get("mrf_lbp", "validation_filepath"),
+            tune_lbp_hp=config.getboolean("mrf_lbp", "tune_lbp_hp"),
+        )
 
         # Hyperparameter tuning
         tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
@@ -277,19 +268,24 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            # "damping": 0.7858213721344507,
-            # "num_iters": 921,
-            # "temperature": 0.9910111614267442,
-            "alpha": 0.9,  # 0.5768611571269355,
-            "beta": 0.7,  # 0.5855811670070769,
-            "gamma": 0.7,  # 0.016516056183874597,
-            "delta": 0.7,  # 0.588351726474382,
+            "damping": 0.16642048711955618,  # noqa: E501 0.7858213721344507,
+            "num_iters": 165,  # 921,
+            "temperature": 0.9705734290236616,  # noqa: E501 0.9910111614267442,
+            "alpha": 0.7822110970515735,  # noqa: E501 0.5768611571269355,
+            "beta": 0.07215988266477134,  # noqa: E501 0.5855811670070769,
+            "gamma": 0.8463037695085346,  # noqa: E501 0.016516056183874597,
+            "delta": 0.8006681327874328,  # noqa: E501 0.588351726474382,
         }
         logger.info(f"Best hyperparameters:\n{best_hp_config}")
 
-        test_mrf_wrapper = MRFWrapper(
-            config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=False
-        )
+        if "damping" not in best_hp_config:
+            test_mrf_wrapper = MRFWrapper(
+                config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=False
+            )
+        else:
+            test_mrf_wrapper = MRFWrapper(
+                config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=True
+            )
 
     test_mrf = test_mrf_wrapper.create_mrf(dict(best_hp_config))
     results = test_mrf_wrapper.run_inference(test_mrf, dict(best_hp_config))
