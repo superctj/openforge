@@ -18,6 +18,7 @@ def create_prompts_per_split(
     data_dir: str,
     split: str,
     num_shots: int,
+    output_dir: str,
 ):
     all_prompts = []
     all_labels = []
@@ -95,9 +96,19 @@ if __name__ == "__main__":
     )
 
     create_prompts_per_split(
-        valid_df, few_shot_df, data_dir, split="valid", num_shots=num_shots
+        valid_df,
+        few_shot_df,
+        data_dir,
+        split="valid",
+        num_shots=num_shots,
+        output_dir=output_dir,
     )
 
     create_prompts_per_split(
-        test_df, few_shot_df, data_dir, split="test", num_shots=num_shots
+        test_df,
+        few_shot_df,
+        data_dir,
+        split="test",
+        num_shots=num_shots,
+        output_dir=output_dir,
     )
