@@ -231,7 +231,7 @@ if __name__ == "__main__":
                 model_id, torch_dtype="auto", trust_remote_code=True
             )
 
-        model.to(device)
+        model = model.to(device)
         tokenizer = AutoTokenizer.from_pretrained(
             model_id, trust_remote_code=True
         )
