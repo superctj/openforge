@@ -12,6 +12,55 @@ from sklearn.metrics import (
 )
 
 
+def load_sotab_features_and_labels_split():
+    pass
+
+
+def load_sotab_features_and_labels(
+    raw_data_dir: str, feature_vectors_dir: str, logger: logging.Logger
+):
+    train_filepath = os.path.join(raw_data_dir, "training.csv")
+    valid_filepath = os.path.join(raw_data_dir, "validation.csv")
+    test_filepath = os.path.join(raw_data_dir, "test.csv")
+
+    train_feature_vectors_filepath = os.path.join(
+        feature_vectors_dir, "train_embeddings.npy"
+    )
+    valid_feature_vectors_filepath = os.path.join(
+        feature_vectors_dir, "valid_embeddings.npy"
+    )
+    test_feature_vectors_filepath = os.path.join(
+        feature_vectors_dir, "test_embeddings.npy"
+    )
+
+    logger.info("Loading training split...")
+    X_train = np.load(train_feature_vectors_filepath)
+    logger.info(f"Training feature vectors shape: {X_train.shape}")
+    _, y_train, train_df = load_openforge_sotab_split(train_filepath, logger)
+
+    logger.info("Loading validation split...")
+    X_valid = np.load(valid_feature_vectors_filepath)
+    logger.info(f"Validation feature vectors shape: {X_valid.shape}")
+    _, y_valid, valid_df = load_openforge_sotab_split(valid_filepath, logger)
+
+    logger.info("Loading test split...")
+    X_test = np.load(test_feature_vectors_filepath)
+    logger.info(f"Test feature vectors shape: {X_train.shape}")
+    _, y_test, test_df = load_openforge_sotab_split(test_filepath, logger)
+
+    return (
+        X_train,
+        y_train,
+        X_valid,
+        y_valid,
+        X_test,
+        y_test,
+        train_df,
+        valid_df,
+        test_df,
+    )
+
+
 def load_openforge_sotab_split(
     split_filepath: str, logger: logging.Logger
 ) -> tuple[np.ndarray, np.ndarray, pd.DataFrame]:
