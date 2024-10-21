@@ -17,7 +17,7 @@ from openforge.utils.llm_common import (
 from openforge.utils.util import parse_config
 
 
-SOTAB_INSTRUCTION = "Instruct: Determine if two semantic column types are equivalent based on whether their sample values are from the same domain. Query: "  # noqa: E501
+SOTAB_INSTRUCTION = "Instruct: Classify a given pair of semantic column types (associated with sample values) as either equivalent or non-equivalent\nQuery: "  # noqa: E501
 
 
 def generate_embeddings_per_split(
@@ -45,16 +45,6 @@ def generate_embeddings_per_split(
 
         if i != 0 and i % batch_size == 0:
             with torch.no_grad():
-                # batch_embeddings = (
-                #     model.encode(
-                #         batch_inputs,
-                #         instruction=SOTAB_INSTRUCTION,
-                #         max_length=max_length,
-                #     )
-                #     .detach()
-                #     .cpu()
-                #     .numpy()
-                # )
                 batch_embeddings = model.encode(
                     batch_inputs,
                     batch_size=batch_size,
@@ -62,28 +52,24 @@ def generate_embeddings_per_split(
                     device=device,
                 )
                 all_embeddings.append(batch_embeddings)
-                # logger.info(batch_inputs)
-                # logger.info(batch_embeddings)
+
+                if i == 32:
+                    logger.info(batch_inputs)
+                    logger.info(batch_embeddings)
+                
                 batch_inputs = []
 
-                # if i % 16 == 0:
-                #     exit(0)
-
-        type_1_sample_values = sample_column_values(
-            label_1_table_path, row["label_1_col_idx"]
+        type_1_sample_values = ", ".join(
+            sample_column_values(label_1_table_path, row["label_1_col_idx"])
         )
-        type_2_sample_values = sample_column_values(
-            label_2_table_path, row["label_2_col_idx"]
+        type_2_sample_values = ", ".join(
+            sample_column_values(label_2_table_path, row["label_2_col_idx"])
         )
-        # batch_inputs.append(
-        #     f"Type 1 '{row['label_1_processed']}' has sample values {type_1_sample_values}; Type 2 '{row['label_2_processed']}' has sample values {type_2_sample_values}."  # noqa: E501
-        # )
         batch_inputs.append(
-            f"Type 1 '{row['label_1_processed']}' has sample values {type_1_sample_values}; Type 2 '{row['label_2_processed']}' has sample values {type_2_sample_values}.{model.tokenizer.eos_token}"  # noqa: E501
+            f"Type 1 '{row['label_1_processed']}' has sample values: {type_1_sample_values}; Type 2 '{row['label_2_processed']}' has sample values: {type_2_sample_values}.{model.tokenizer.eos_token}"  # noqa: E501
         )
 
     if len(batch_inputs) > 0:
-        # batch_embeddings = model.encode(batch_inputs).detach().cpu().numpy()
         with torch.no_grad():
             batch_embeddings = model.encode(
                 batch_inputs,
@@ -94,9 +80,6 @@ def generate_embeddings_per_split(
         all_embeddings.append(batch_embeddings)
 
     all_embeddings = np.concatenate(all_embeddings, axis=0)
-    all_embeddings = F.normalize(
-        torch.from_numpy(all_embeddings), p=2, dim=1
-    ).numpy()
     assert all_embeddings.shape[0] == input_df.shape[0]
 
     output_filepath = os.path.join(output_dir, f"{split}_embeddings.npy")
@@ -146,18 +129,19 @@ if __name__ == "__main__":
     model = model.to(device)
 
     data_dir = config.get("io", "data_dir")
-    _, valid_df, test_df = load_openforge_sotab_benchmark(
+    # Training and validation set are the same for SOTAB-v2 dataset
+    train_df, _, test_df = load_openforge_sotab_benchmark(
         os.path.join(data_dir, "artifact"), logger
     )
 
     generate_embeddings_per_split(
         model,
         data_dir,
-        valid_df,
+        train_df,
         batch_size,
         max_length,
         device,
-        split="valid",
+        split="training",
         output_dir=output_dir,
         logger=logger,
     )
