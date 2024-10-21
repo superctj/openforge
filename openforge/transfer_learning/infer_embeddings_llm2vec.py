@@ -17,6 +17,11 @@ from openforge.utils.llm_common import (
 )
 from openforge.utils.util import parse_config
 
+# CONDA_ENV_PREFIX = os.environ.get("CONDA_PREFIX", "")
+# os.environ["LD_LIBRARY_PATH"] = os.path.join(
+#     CONDA_ENV_PREFIX, "lib/python3.11/site-packages/nvidia/cuda_nvrtc/lib"
+# )
+# print(os.environ["LD_LIBRARY_PATH"])
 
 SOTAB_INSTRUCTION = "Determine if two semantic column types are equivalent based on whether their sample values are from the same domain: "  # noqa: E501
 
@@ -28,6 +33,7 @@ def generate_embeddings_per_split(
     batch_size: int,
     split: str,
     output_dir: str,
+    logger=None,
 ):
     batch_inputs = []
     all_embeddings = []
@@ -42,9 +48,19 @@ def generate_embeddings_per_split(
             )
 
         if i != 0 and i % batch_size == 0:
-            batch_embeddings = model.encode(batch_inputs).detach().cpu().numpy()
+            batch_embeddings = (
+                model.encode(batch_inputs, batch_size=batch_size)
+                .detach()
+                .cpu()
+                .numpy()
+            )
             all_embeddings.append(batch_embeddings)
+            logger.info(batch_inputs)
+            logger.info(batch_embeddings)
             batch_inputs = []
+
+            if i % 32 == 0:
+                exit(0)
 
         type_1_sample_values = sample_column_values(
             label_1_table_path, row["label_1_col_idx"]
@@ -52,12 +68,17 @@ def generate_embeddings_per_split(
         type_2_sample_values = sample_column_values(
             label_2_table_path, row["label_2_col_idx"]
         )
+        # batch_inputs.append(
+        #     [
+        #         SOTAB_INSTRUCTION,
+        #         f"Type 1 {row['label_1_processed']} has sample values {', '.join(type_1_sample_values)}. Type 2 {row['label_2_processed']} has sample values {', '.join(type_2_sample_values)}.",  # noqa: E501
+        #     ]
+        # )
         batch_inputs.append(
-            [
-                SOTAB_INSTRUCTION,
-                f"Type 1 '{row['label_1_processed']}' has sample values {type_1_sample_values}. Type 2 '{row['label_2_processed']}' has sample values {type_2_sample_values}.",  # noqa: E501
-            ]
+            SOTAB_INSTRUCTION
+            + f"Type 1 '{row['label_1_processed']}' has sample values {type_1_sample_values}. Type 2 '{row['label_2_processed']}' has sample values {type_2_sample_values}."  # noqa: E501
         )
+
     if len(batch_inputs) > 0:
         batch_embeddings = model.encode(batch_inputs).detach().cpu().numpy()
         all_embeddings.append(batch_embeddings)
@@ -146,6 +167,7 @@ if __name__ == "__main__":
         batch_size,
         split="valid",
         output_dir=output_dir,
+        logger=logger,
     )
 
     generate_embeddings_per_split(
@@ -155,4 +177,5 @@ if __name__ == "__main__":
         batch_size,
         split="test",
         output_dir=output_dir,
+        logger=logger,
     )
