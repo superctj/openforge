@@ -5,8 +5,7 @@ import pickle
 
 import numpy as np
 
-from sklearn.linear_model import RidgeClassifier
-from sklearn.utils import extmath
+from sklearn.linear_model import LogisticRegression
 
 from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import PriorModelTuningEngine
@@ -19,14 +18,15 @@ from openforge.utils.prior_model_common import (
 from openforge.utils.util import fix_global_random_state, parse_config
 
 
-class RidgeClassifierTuningWrapper:
-    def __init__(
-        self,
+MODEL_NAME = "logistic_regression"
+
+
+class LogisticRegressionTuningWrapper:
+    def __init__(self,
         raw_data_dir: str,
         feature_vectors_dir: str,
         random_seed: int,
-        logger: logging.Logger,
-    ):
+        logger: logging.Logger,):
         (
             self.X_train,
             self.y_train,
@@ -41,32 +41,30 @@ class RidgeClassifierTuningWrapper:
         self.random_seed = random_seed
 
     def create_default_model(self):
-        self.clf = RidgeClassifier(
+        self.clf = LogisticRegression(
             class_weight="balanced",
             random_state=self.random_seed,
         )
 
-    def create_model(self, hp_config: dict):
-        self.clf = RidgeClassifier(
-            alpha=hp_config["alpha"],
-            tol=hp_config["tol"],
-            class_weight="balanced",
-            random_state=self.random_seed,
-        )
+    # def create_model(self, hp_config: dict):
+    #     self.clf = RandomForestClassifier(
+    #         n_estimators=hp_config["n_estimators"],
+    #         max_depth=hp_config["max_depth"],
+    #         min_samples_split=hp_config["min_samples_split"],
+    #         min_weight_fraction_leaf=hp_config["min_weight_fraction_leaf"],
+    #         random_state=self.random_seed,
+    #     )
 
     def fit(self):
         self.clf.fit(self.X_train, self.y_train)
 
     def predict(self, X: np.ndarray, threshold: float = 0.5):
-        y_pred = (self.predict_proba(X)[:, 1] >= threshold).astype(int)
+        y_pred = (self.clf.predict_proba(X)[:, 1] >= threshold).astype(int)
 
         return y_pred
 
     def predict_proba(self, X: np.ndarray):
-        d = self.clf.decision_function(X)
-        d_2d = np.c_[-d, d]
-
-        return extmath.softmax(d_2d)
+        return self.clf.predict_proba(X)
 
 
 if __name__ == "__main__":
@@ -107,7 +105,7 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     # Create prior model wrapper
-    prior_model_wrapper = RidgeClassifierTuningWrapper(
+    prior_model_wrapper = LogisticRegressionTuningWrapper(
         config.get("io", "raw_data_dir"),
         config.get("io", "feature_vectors_dir"),
         config.getint("hp_optimization", "random_seed"),
@@ -132,7 +130,7 @@ if __name__ == "__main__":
         prior_model_wrapper.fit()
 
         # Save model
-        model_save_filepath = os.path.join(output_dir, "ridge.pkl")
+        model_save_filepath = os.path.join(output_dir, f"{MODEL_NAME}.pkl")
         with open(model_save_filepath, "wb") as f:
             pickle.dump(prior_model_wrapper.clf, f)
     elif args.mode == "train_w_default_hp":
@@ -144,7 +142,7 @@ if __name__ == "__main__":
             "train_w_hp_tuning or test."
         )
 
-        model_save_filepath = os.path.join(output_dir, "ridge.pkl")
+        model_save_filepath = os.path.join(output_dir, f"{MODEL_NAME}.pkl")
         with open(model_save_filepath, "rb") as f:
             prior_model_wrapper.clf = pickle.load(f)
 
@@ -174,7 +172,9 @@ if __name__ == "__main__":
     log_exp_records(y_train, y_train_pred, y_train_proba, "training", logger)
     log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
 
-    save_dir = os.path.join(config.get("io", "raw_data_dir"), "ridge")
+    save_dir = os.path.join(
+        config.get("io", "raw_data_dir"), f"{MODEL_NAME}"
+    )
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
