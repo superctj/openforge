@@ -16,18 +16,36 @@ def load_sotab_features_and_labels_split():
     pass
 
 
+def standardize_features(X_train: np.array, X_valid: np.array = None, X_test: np.array=None):
+    means = np.mean(X_train, axis=0)
+    stds = np.std(X_train, axis=0)
+    
+    epsilon = 1e-8
+    stds_adjusted = np.where(stds < epsilon, epsilon, stds)
+
+    X_train_standardized = (X_train - means) / stds
+    
+    if X_valid is not None:
+        X_valid_standardized = (X_vald - means) / stds_adjusted
+    else:
+        X_valid_standardized = None
+    
+    if X_test is not None:
+        X_test_standardized = (X_test - means) / stds_adjusted
+    else:
+        X_test_standardized = None
+
+    return X_train_standardized, X_valid_standardized, X_test_standardized
+
+
 def load_sotab_features_and_labels(
     raw_data_dir: str, feature_vectors_dir: str, logger: logging.Logger
 ):
     train_filepath = os.path.join(raw_data_dir, "training.csv")
-    valid_filepath = os.path.join(raw_data_dir, "validation.csv")
     test_filepath = os.path.join(raw_data_dir, "test.csv")
 
     train_feature_vectors_filepath = os.path.join(
-        feature_vectors_dir, "train_embeddings.npy"
-    )
-    valid_feature_vectors_filepath = os.path.join(
-        feature_vectors_dir, "valid_embeddings.npy"
+        feature_vectors_dir, "training_embeddings.npy"
     )
     test_feature_vectors_filepath = os.path.join(
         feature_vectors_dir, "test_embeddings.npy"
@@ -38,25 +56,20 @@ def load_sotab_features_and_labels(
     logger.info(f"Training feature vectors shape: {X_train.shape}")
     _, y_train, train_df = load_openforge_sotab_split(train_filepath, logger)
 
-    logger.info("Loading validation split...")
-    X_valid = np.load(valid_feature_vectors_filepath)
-    logger.info(f"Validation feature vectors shape: {X_valid.shape}")
-    _, y_valid, valid_df = load_openforge_sotab_split(valid_filepath, logger)
-
     logger.info("Loading test split...")
     X_test = np.load(test_feature_vectors_filepath)
     logger.info(f"Test feature vectors shape: {X_train.shape}")
     _, y_test, test_df = load_openforge_sotab_split(test_filepath, logger)
 
+    logger.info("Standardizing features...")
+    X_train_standardized, _, X_test_standardized = standardize_features(X_train, X_valid=None, X_test=X_test)
+
     return (
         X_train,
         y_train,
-        X_valid,
-        y_valid,
         X_test,
         y_test,
         train_df,
-        valid_df,
         test_df,
     )
 
