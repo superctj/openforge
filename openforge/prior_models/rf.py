@@ -11,6 +11,7 @@ from openforge.hp_optimization.hp_space import HyperparameterSpace
 from openforge.hp_optimization.tuning import PriorModelTuningEngine
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.prior_model_common import (
+    load_entity_matching_features_and_labels,
     load_sotab_features_and_labels,
     log_exp_metrics,
     log_exp_records,
@@ -22,21 +23,42 @@ MODEL_NAME = "rf"
 
 
 class RandomForestTuningWrapper:
-    def __init__(self,
+    def __init__(
+        self,
+        task: str,
         raw_data_dir: str,
         feature_vectors_dir: str,
         random_seed: int,
-        logger: logging.Logger,):
-        (
-            self.X_train,
-            self.y_train,
-            self.X_test,
-            self.y_test,
-            self.train_df,
-            self.test_df,
-        ) = load_sotab_features_and_labels(
-            raw_data_dir, feature_vectors_dir, logger
-        )
+        logger: logging.Logger,
+    ):
+        if task == "sotab_v2":
+            (
+                self.X_train,
+                self.y_train,
+                self.X_test,
+                self.y_test,
+                self.train_df,
+                self.test_df,
+            ) = load_sotab_features_and_labels(
+                raw_data_dir, feature_vectors_dir, logger
+            )
+        elif task == "entity-matching_walmart-amazon":
+            (
+                self.X_train,
+                self.y_train,
+                self.X_valid,
+                self.y_valid,
+                self.X_test,
+                self.y_test,
+                self.train_df,
+                self.valid_df,
+                self.test_df,
+            ) = load_entity_matching_features_and_labels(
+                raw_data_dir, feature_vectors_dir, logger
+            )
+        else:
+            raise ValueError(f"Unsupported task: {task}.")
+
         self.clf = None
         self.random_seed = random_seed
 
@@ -104,7 +126,9 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     # Create prior model wrapper
+    task = config.get("io", "task")
     prior_model_wrapper = RandomForestTuningWrapper(
+        task,
         config.get("io", "raw_data_dir"),
         config.get("io", "feature_vectors_dir"),
         config.getint("hp_optimization", "random_seed"),
@@ -147,11 +171,18 @@ if __name__ == "__main__":
 
     X_train = prior_model_wrapper.X_train
     y_train = prior_model_wrapper.y_train
+    if task != "sotab_v2":
+        X_valid = prior_model_wrapper.X_valid
+        y_valid = prior_model_wrapper.y_valid
     X_test = prior_model_wrapper.X_test
     y_test = prior_model_wrapper.y_test
 
     y_train_pred = prior_model_wrapper.predict(X_train)
     log_exp_metrics("training", y_train, y_train_pred, logger)
+
+    if task != "sotab_v2":
+        y_valid_pred = prior_model_wrapper.predict(X_valid)
+        log_exp_metrics("validation", y_valid, y_valid_pred, logger)
 
     y_test_pred = prior_model_wrapper.predict(X_test)
     log_exp_metrics("test", y_test, y_test_pred, logger)
@@ -164,31 +195,47 @@ if __name__ == "__main__":
     train_df["confidence_score"] = np.max(y_train_proba, axis=1)
     train_df["prediction"] = y_train_pred
 
+    if task != "sotab_v2":
+        valid_df = prior_model_wrapper.valid_df
+        y_valid_proba = prior_model_wrapper.predict_proba(X_valid)
+        valid_df["confidence_score"] = np.max(y_valid_proba, axis=1)
+        valid_df["prediction"] = y_valid_pred
+
     y_test_proba = prior_model_wrapper.predict_proba(X_test)
     test_df["confidence_score"] = np.max(y_test_proba, axis=1)
     test_df["prediction"] = y_test_pred
 
     log_exp_records(y_train, y_train_pred, y_train_proba, "training", logger)
+    if task != "sotab_v2":
+        log_exp_records(
+            y_valid, y_valid_pred, y_valid_proba, "validation", logger
+        )
     log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
 
-    save_dir = os.path.join(
-        config.get("io", "raw_data_dir"), f"{MODEL_NAME}"
-    )
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
     if args.mode == "train_w_default_hp":
-        train_output_filepath = os.path.join(save_dir, "training_default.csv")
-        test_output_filepath = os.path.join(save_dir, "test_default.csv")
+        train_output_filepath = os.path.join(output_dir, "training_default.csv")
+        if task != "sotab_v2":
+            valid_output_filepath = os.path.join(
+                output_dir, "validation_default.csv"
+            )
+        test_output_filepath = os.path.join(output_dir, "test_default.csv")
     else:
-        train_output_filepath = os.path.join(save_dir, "training.csv")
-        test_output_filepath = os.path.join(save_dir, "test.csv")
+        train_output_filepath = os.path.join(output_dir, "training.csv")
+        if task != "sotab_v2":
+            valid_output_filepath = os.path.join(output_dir, "validation.csv")
+        test_output_filepath = os.path.join(output_dir, "test.csv")
 
-    train_df.rename(
-        columns={"relation_variable_name": "random_variable_name"}, inplace=True
-    )
-    test_df.rename(
-        columns={"relation_variable_name": "random_variable_name"}, inplace=True
-    )
+    if task == "sotab_v2":
+        train_df.rename(
+            columns={"relation_variable_name": "random_variable_name"},
+            inplace=True,
+        )
+        test_df.rename(
+            columns={"relation_variable_name": "random_variable_name"},
+            inplace=True,
+        )
+
     train_df.to_csv(train_output_filepath, index=False)
+    if task != "sotab_v2":
+        valid_df.to_csv(valid_output_filepath, index=False)
     test_df.to_csv(test_output_filepath, index=False)

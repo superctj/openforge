@@ -213,22 +213,18 @@ if __name__ == "__main__":
         )
     log_exp_records(y_test, y_test_pred, y_test_proba, "test", logger)
 
-    save_dir = os.path.join(config.get("io", "output_dir"), f"{MODEL_NAME}")
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
     if args.mode == "train_w_default_hp":
-        train_output_filepath = os.path.join(save_dir, "training_default.csv")
+        train_output_filepath = os.path.join(output_dir, "training_default.csv")
         if task != "sotab_v2":
             valid_output_filepath = os.path.join(
-                save_dir, "validation_default.csv"
+                output_dir, "validation_default.csv"
             )
-        test_output_filepath = os.path.join(save_dir, "test_default.csv")
+        test_output_filepath = os.path.join(output_dir, "test_default.csv")
     else:
-        train_output_filepath = os.path.join(save_dir, "training.csv")
+        train_output_filepath = os.path.join(output_dir, "training.csv")
         if task != "sotab_v2":
-            valid_output_filepath = os.path.join(save_dir, "validation.csv")
-        test_output_filepath = os.path.join(save_dir, "test.csv")
+            valid_output_filepath = os.path.join(output_dir, "validation.csv")
+        test_output_filepath = os.path.join(output_dir, "test.csv")
 
     if task == "sotab_v2":
         train_df.rename(
