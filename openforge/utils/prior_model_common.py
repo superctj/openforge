@@ -12,24 +12,22 @@ from sklearn.metrics import (
 )
 
 
-def load_sotab_features_and_labels_split():
-    pass
-
-
-def standardize_features(X_train: np.array, X_valid: np.array = None, X_test: np.array=None):
+def standardize_features(
+    X_train: np.array, X_valid: np.array = None, X_test: np.array = None
+):
     means = np.mean(X_train, axis=0)
     stds = np.std(X_train, axis=0)
-    
+
     epsilon = 1e-8
     stds_adjusted = np.where(stds < epsilon, epsilon, stds)
 
     X_train_standardized = (X_train - means) / stds
-    
+
     if X_valid is not None:
-        X_valid_standardized = (X_vald - means) / stds_adjusted
+        X_valid_standardized = (X_valid - means) / stds_adjusted
     else:
         X_valid_standardized = None
-    
+
     if X_test is not None:
         X_test_standardized = (X_test - means) / stds_adjusted
     else:
@@ -62,7 +60,9 @@ def load_sotab_features_and_labels(
     _, y_test, test_df = load_openforge_sotab_split(test_filepath, logger)
 
     logger.info("Standardizing features...")
-    X_train_standardized, _, X_test_standardized = standardize_features(X_train, X_valid=None, X_test=X_test)
+    X_train_standardized, _, X_test_standardized = standardize_features(
+        X_train, X_valid=None, X_test=X_test
+    )
 
     return (
         X_train,
@@ -70,6 +70,57 @@ def load_sotab_features_and_labels(
         X_test,
         y_test,
         train_df,
+        test_df,
+    )
+
+
+def load_entity_matching_features_and_labels(
+    raw_data_dir: str, feature_vectors_dir: str, logger: logging.Logger
+):
+    train_filepath = os.path.join(raw_data_dir, "preprocessed_train.json")
+    valid_filepath = os.path.join(raw_data_dir, "preprocessed_valid.json")
+    test_filepath = os.path.join(raw_data_dir, "preprocessed_test.json")
+
+    train_feature_vectors_filepath = os.path.join(
+        feature_vectors_dir, "training_embeddings.npy"
+    )
+    valid_feature_vectors_filepath = os.path.join(
+        feature_vectors_dir, "validation_embeddings.npy"
+    )
+    test_feature_vectors_filepath = os.path.join(
+        feature_vectors_dir, "test_embeddings.npy"
+    )
+
+    logger.info("Loading training split...")
+    X_train = np.load(train_feature_vectors_filepath)
+    train_df = pd.read_json(train_filepath)
+    y_train = train_df["label"].values
+    logger.info(f"Training feature vectors shape: {X_train.shape}")
+    logger.info(f"Training labels shape: {y_train.shape}")
+
+    logger.info("Loading validation split...")
+    X_valid = np.load(valid_feature_vectors_filepath)
+    valid_df = pd.read_json(valid_filepath)
+    y_valid = valid_df["label"].values
+    logger.info(f"Validation feature vectors shape: {X_valid.shape}")
+    logger.info(f"Validation labels shape: {y_valid.shape}")
+
+    logger.info("Loading test split...")
+    X_test = np.load(test_feature_vectors_filepath)
+    test_df = pd.read_json(test_filepath)
+    y_test = test_df["label"].values
+    logger.info(f"Test feature vectors shape: {X_test.shape}")
+    logger.info(f"Test labels shape: {y_test.shape}")
+
+    return (
+        X_train,
+        y_train,
+        X_valid,
+        y_valid,
+        X_test,
+        y_test,
+        train_df,
+        valid_df,
         test_df,
     )
 
