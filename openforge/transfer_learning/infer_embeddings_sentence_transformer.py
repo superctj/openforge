@@ -4,9 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn.functional as F
 
-# from transformers import AutoModel
 from sentence_transformers import SentenceTransformer
 
 from openforge.utils.custom_logging import create_custom_logger
@@ -19,18 +17,23 @@ from openforge.utils.util import parse_config
 
 SOTAB_INSTRUCTION = "Instruct: Classify a given pair of semantic column types (associated with sample values) as either equivalent or non-equivalent\nQuery: "  # noqa: E501
 
+ENTITY_MATCHING_INSTRUCTION = "Instruct: Classify a given pair of entities as either equivalent or non-equivalent\nQuery: "  # noqa: E501
 
-def generate_embeddings_per_split(
+
+def generate_embeddings_per_split_for_sotab_v2(
     model,
     data_dir: str,
     input_df: pd.DataFrame,
     batch_size: int,
-    max_length: int,
     device: torch.device,
     split: str,
     output_dir: str,
     logger=None,
 ):
+    """
+    Generate embeddings per split for SOTAB-v2 dataset.
+    """
+
     batch_inputs = []
     all_embeddings = []
 
@@ -56,7 +59,7 @@ def generate_embeddings_per_split(
                 if i == 32:
                     logger.info(batch_inputs)
                     logger.info(batch_embeddings)
-                
+
                 batch_inputs = []
 
         type_1_sample_values = ", ".join(
@@ -75,6 +78,60 @@ def generate_embeddings_per_split(
                 batch_inputs,
                 batch_size=batch_size,
                 prompt=SOTAB_INSTRUCTION,
+                device=device,
+            )
+        all_embeddings.append(batch_embeddings)
+
+    all_embeddings = np.concatenate(all_embeddings, axis=0)
+    assert all_embeddings.shape[0] == input_df.shape[0]
+
+    output_filepath = os.path.join(output_dir, f"{split}_embeddings.npy")
+    np.save(output_filepath, all_embeddings)
+
+
+def generate_embeddings_per_split_for_entity_matching(
+    model,
+    input_df: pd.DataFrame,
+    batch_size: int,
+    device: torch.device,
+    split: str,
+    output_dir: str,
+    logger=None,
+):
+    """
+    Generate embeddings per split for entity matching task.
+    """
+
+    batch_inputs = []
+    all_embeddings = []
+
+    for i, row in input_df.iterrows():
+        if i != 0 and i % batch_size == 0:
+            with torch.no_grad():
+                batch_embeddings = model.encode(
+                    batch_inputs,
+                    batch_size=batch_size,
+                    prompt=ENTITY_MATCHING_INSTRUCTION,
+                    device=device,
+                )
+                all_embeddings.append(batch_embeddings)
+
+                if i == 32:
+                    logger.info(batch_inputs)
+                    logger.info(batch_embeddings)
+
+                batch_inputs = []
+
+        batch_inputs.append(
+            f"Entity 1: {row['entity_1']}; Entity 2: {row['entity_2']}.{model.tokenizer.eos_token}"  # noqa: E501
+        )
+
+    if len(batch_inputs) > 0:
+        with torch.no_grad():
+            batch_embeddings = model.encode(
+                batch_inputs,
+                batch_size=batch_size,
+                prompt=ENTITY_MATCHING_INSTRUCTION,
                 device=device,
             )
         all_embeddings.append(batch_embeddings)
@@ -113,9 +170,11 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
+    task = config.get("encoding", "task")
     model_id = config.get("encoding", "model_id")
     max_length = config.getint("encoding", "max_length")
     batch_size = config.getint("encoding", "batch_size")
+    data_dir = config.get("io", "data_dir")
 
     # model = AutoModel.from_pretrained(model_id, trust_remote_code=True)
     model = SentenceTransformer(
@@ -128,32 +187,70 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
-    data_dir = config.get("io", "data_dir")
-    # Training and validation set are the same for SOTAB-v2 dataset
-    train_df, _, test_df = load_openforge_sotab_benchmark(
-        os.path.join(data_dir, "artifact"), logger
-    )
+    if task == "sotab-v2":
+        # Training and validation set are the same for SOTAB-v2 dataset
+        train_df, _, test_df = load_openforge_sotab_benchmark(
+            os.path.join(data_dir, "artifact"), logger
+        )
 
-    generate_embeddings_per_split(
-        model,
-        data_dir,
-        train_df,
-        batch_size,
-        max_length,
-        device,
-        split="training",
-        output_dir=output_dir,
-        logger=logger,
-    )
+        generate_embeddings_per_split_for_sotab_v2(
+            model,
+            data_dir,
+            train_df,
+            batch_size,
+            device,
+            split="training",
+            output_dir=output_dir,
+            logger=logger,
+        )
 
-    generate_embeddings_per_split(
-        model,
-        data_dir,
-        test_df,
-        batch_size,
-        max_length,
-        device,
-        split="test",
-        output_dir=output_dir,
-        logger=logger,
-    )
+        generate_embeddings_per_split_for_sotab_v2(
+            model,
+            data_dir,
+            test_df,
+            batch_size,
+            device,
+            split="test",
+            output_dir=output_dir,
+            logger=logger,
+        )
+    elif task == "entity-matching_walmart-amazon":
+        train_df = pd.read_json(
+            os.path.join(data_dir, "preprocessed_train.json")
+        )
+        valid_df = pd.read_json(
+            os.path.join(data_dir, "preprocessed_valid.json")
+        )
+        test_df = pd.read_json(os.path.join(data_dir, "preprocessed_test.json"))
+
+        generate_embeddings_per_split_for_entity_matching(
+            model,
+            train_df,
+            batch_size,
+            device,
+            split="training",
+            output_dir=output_dir,
+            logger=logger,
+        )
+
+        generate_embeddings_per_split_for_entity_matching(
+            model,
+            valid_df,
+            batch_size,
+            device,
+            split="validation",
+            output_dir=output_dir,
+            logger=logger,
+        )
+
+        generate_embeddings_per_split_for_entity_matching(
+            model,
+            test_df,
+            batch_size,
+            device,
+            split="test",
+            output_dir=output_dir,
+            logger=logger,
+        )
+    else:
+        raise ValueError(f"Unsupported task: {task}")
