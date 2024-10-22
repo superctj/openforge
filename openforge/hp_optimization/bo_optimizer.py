@@ -14,9 +14,9 @@ def get_bo_optimizer(
     target_function: object,
 ):
     try:
-        output_dir = exp_config.get("results", "log_dir")
+        output_dir = exp_config.get("io", "log_dir")
     except NoOptionError:
-        output_dir = exp_config.get("results", "output_dir")
+        output_dir = exp_config.get("io", "output_dir")
 
     scenario = Scenario(
         configspace=hp_space,
