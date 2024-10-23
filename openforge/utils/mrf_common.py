@@ -41,19 +41,18 @@ def evaluate_inference_results(
                 "No ground truth attribute found in prior data."
             )
 
+        y_true.append(var_label)
+
         if hasattr(row, "relation_variable_name"):
             var_name = row.relation_variable_name
         elif hasattr(row, "random_variable_name"):
             var_name = row.random_variable_name
+        elif hasattr(row, "l_id") and hasattr(row, "r_id"):
+            var_name = (row.l_id, row.r_id)
         else:
             raise AttributeError(
                 "No variable name attribute found in prior data."
             )
-
-        pred = int(results[var_name])
-
-        y_true.append(var_label)
-        y_pred.append(pred)
 
         if hasattr(row, "positive_label_prediction_probability"):
             if row.positive_label_prediction_probability >= 0.5:
@@ -81,6 +80,15 @@ def evaluate_inference_results(
             )
 
         y_prior.append(prior_pred)
+
+        # Temporary fix for the case where we only run MRF inference on the
+        # largest connected component
+        try:
+            pred = int(results[var_name])
+        except KeyError:
+            pred = prior_pred
+
+        y_pred.append(pred)
 
         if log_predictions:
             logger.info(log_msg)
