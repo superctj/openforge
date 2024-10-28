@@ -1,8 +1,8 @@
 import argparse
 import os
+import random
 import time
 
-# from collections import Counter
 # from itertools import combinations
 
 import networkx as nx
@@ -13,7 +13,9 @@ import pandas as pd
 from pgmax import fgraph, fgroup, infer, vgroup
 
 from openforge.hp_optimization.hp_space import HyperparameterSpace
-from openforge.hp_optimization.tuning import TuningEngine
+from openforge.hp_optimization.tuning import (
+    SparseDatasetTuningEngine as TuningEngine,
+)
 from openforge.utils.custom_logging import create_custom_logger, get_logger
 from openforge.utils.mrf_common import (
     PRIOR_CONSTANT,
@@ -35,78 +37,6 @@ TERNARY_FACTOR_CONFIG = np.array(
         [1, 1, 1],
     ]
 )
-
-
-def profile_connected_components(df: pd.DataFrame):
-    G = nx.Graph()
-
-    for _, row in df.iterrows():
-        lid = row["ltable_id"]
-        rid = row["rtable_id"]
-        label = row["label"]
-
-        G.add_node(lid)
-        G.add_node(rid)
-        G.add_edge(lid, rid, label=label)
-
-    connected_components = list(nx.connected_components(G))
-
-    # Sort the components by size in descending order
-    cc_sorted = sorted(connected_components, key=len, reverse=True)
-
-    # Iterate through each component, get the subgraph, and compute number of edges and cycles # noqa: E501
-    for i, component in enumerate(cc_sorted):
-        subgraph = G.subgraph(component)
-        num_edges = subgraph.number_of_edges()
-        cycles = nx.cycle_basis(subgraph)
-        num_cycles = len(cycles)
-
-        print(
-            f"Component {i + 1} (size {len(component)}, edges {num_edges}, cycles {num_cycles})"  # noqa: E501
-        )
-        print(f"Cycles: {cycles}")
-        print(f"Component: {component}\n")
-
-
-def create_nodes(
-    df: pd.DataFrame, feature_vectors: np.ndarray, prior_df: pd.DataFrame
-) -> pd.DataFrame:
-    nodes = []
-
-    for i, row in df.iterrows():
-        lid = row["ltable_id"]
-        rid = row["rtable_id"]
-        label = row["label"]
-        feature = feature_vectors[i]
-        prediction = prior_df.loc[i, "prediction"]
-        confidence_score = prior_df.loc[i, "confidence_score"]
-
-        nodes.append(
-            Node(lid, rid, label, feature, prediction, confidence_score)
-        )
-
-    return nodes
-
-
-class Node:
-    def __init__(
-        self,
-        lid: int,
-        rid: int,
-        label: int,
-        feature: np.ndarray,
-        prediction: int,
-        confidence_score: float,
-    ):
-        self.id = (lid, rid)
-        self.label = label
-        self.feature = feature
-        self.prediction = prediction
-        self.confidence_score = confidence_score
-        self.cluster_id = -1
-
-    def intersect(self, other):
-        return self.id[0] == other.id[0] or self.id[1] == other.id[1]
 
 
 class MRFWrapper:
@@ -137,7 +67,13 @@ class MRFWrapper:
 
             G.add_node(lid)
             G.add_node(rid)
-            G.add_edge(lid, rid)
+            G.add_edge(
+                lid,
+                rid,
+                pair=(lid, rid),
+                prediction=row["prediction"],
+                confidence_score=row["confidence_score"],
+            )
 
         # Sort the components by size in descending order
         connected_components = list(nx.connected_components(G))
@@ -145,31 +81,68 @@ class MRFWrapper:
 
         return cc_sorted, G
 
-    def create_mrf_variables_and_unary_factors(self, subgraph):
+    def create_mrf(self, subgraph, mrf_hp_config: dict) -> fgraph:
         start = time.time()
 
-        edges = list(subgraph.edges())
-        var_identifiers = []
+        # Each pair of entities becomes a random variable in the MRF
+        nodes = subgraph.nodes()
+        edges = subgraph.edges(data=True)
+        var_identifiers = set()
 
         for e in edges:
-            if self.prior_data.loc[
-                (self.prior_data["l_id"] == e[0])
-                & (self.prior_data["r_id"] == e[1])
-            ].empty:
-                var_identifiers.append((e[1], e[0]))
-            else:
-                var_identifiers.append((e[0], e[1]))
+            var_identifiers.add(e[2]["pair"])
 
-        variables = vgroup.VarDict(num_states=2, variable_names=var_identifiers)
+        variables = vgroup.VarDict(
+            num_states=2, variable_names=list(var_identifiers)
+        )
 
-        uniq_var_identifiers = set(var_identifiers)
+        # Insert edges to create transitive closure
         extrapolated_var_identifiers = set()
-        cycles = nx.cycle_basis(subgraph)
+        ternary_nodes = set()
 
-        for c in cycles:
-            for i in range(len(c) - 2):
-                if (c[i], c[i + 2]) not in uniq_var_identifiers:
-                    extrapolated_var_identifiers.add((c[i], c[i + 2]))
+        for e in edges:
+            pair = e[2]["pair"]
+            pred = e[2]["prediction"]
+
+            # Only create transitive closure for positive predictions
+            if pred == 1:
+                neighbors = set(
+                    list(subgraph.neighbors(pair[0]))
+                    + list(subgraph.neighbors(pair[1]))
+                )
+                neighbors.remove(pair[0])
+                neighbors.remove(pair[1])
+                neighbors = list(neighbors)
+
+                # Insert at most 3 transitive dependencies
+                num_dependencies = 3
+
+                if len(neighbors) >= num_dependencies:
+                    neighbors = neighbors[:3]
+                else:
+                    num_samples = num_dependencies - len(neighbors)
+                    neighbors += random.sample(
+                        list(set(nodes) - set([pair[0], pair[1]])),
+                        num_samples,
+                    )
+
+                for n in neighbors:
+                    if (pair[0], n) not in var_identifiers and (
+                        n,
+                        pair[0],
+                    ) not in var_identifiers:
+                        extrapolated_var_identifiers.add((pair[0], n))
+
+                    if (pair[1], n) not in var_identifiers and (
+                        n,
+                        pair[1],
+                    ) not in var_identifiers:
+                        extrapolated_var_identifiers.add((pair[1], n))
+
+                    ternary_nodes.add((pair[0], pair[1], n))
+
+        if len(extrapolated_var_identifiers) == 0:
+            return None
 
         extrapolated_variables = vgroup.VarDict(
             num_states=2, variable_names=list(extrapolated_var_identifiers)
@@ -187,15 +160,10 @@ class MRFWrapper:
         # add unary factors
         start = time.time()
 
-        for var_id in var_identifiers:
-            var = variables.__getitem__(var_id)
+        for e in edges:
+            var = variables.__getitem__(e[2]["pair"])
             variables_for_unary_factors.append([var])
-
-            row = self.prior_data.loc[
-                (self.prior_data["l_id"] == var_id[0])
-                & (self.prior_data["r_id"] == var_id[1])
-            ].iloc[0]
-            pred_proba = row["confidence_score"]
+            pred_proba = e[2]["confidence_score"]
 
             # Get around the warning of dividing by zero encountered in log
             if pred_proba == 1:
@@ -203,7 +171,7 @@ class MRFWrapper:
             elif pred_proba == 0:
                 pred_proba = PRIOR_CONSTANT
 
-            if row.prediction == 1:
+            if e[2]["prediction"] == 1:
                 prior = np.log(np.array([1 - pred_proba, pred_proba]))
             else:
                 prior = np.log(np.array([pred_proba, 1 - pred_proba]))
@@ -229,11 +197,7 @@ class MRFWrapper:
         end = time.time()
         self.logger.info(f"Time to add unary factors: {end-start:.2f} seconds")
 
-        self.fg = fg
-        self.variables = variables
-        self.extrapolated_variables = extrapolated_variables
-
-    def create_ternary_factors(self, subgraph, mrf_hp_config: dict):
+        # add ternary factors
         ternary_table = [
             mrf_hp_config["alpha"],  # 0, 0, 0
             mrf_hp_config["beta"],  # 0, 0, 1
@@ -248,85 +212,87 @@ class MRFWrapper:
 
         start = time.time()
         variables_for_ternary_factors = set()
-        cycles = nx.cycle_basis(subgraph)
 
-        for c in cycles:
-            for i in range(len(c) - 2):
+        for t in ternary_nodes:
+            var1 = variables.__getitem__((t[0], t[1]))
+
+            try:
+                var2 = variables.__getitem__((t[0], t[2]))
+            except ValueError:
                 try:
-                    var1 = self.variables.__getitem__((c[i], c[i + 1]))
+                    var2 = variables.__getitem__((t[2], t[0]))
                 except ValueError:
-                    var1 = self.variables.__getitem__((c[i + 1], c[i]))
+                    var2 = extrapolated_variables.__getitem__((t[0], t[2]))
 
+            try:
+                var3 = variables.__getitem__((t[1], t[2]))
+            except ValueError:
                 try:
-                    var2 = self.variables.__getitem__((c[i], c[i + 2]))
+                    var3 = variables.__getitem__((t[2], t[1]))
                 except ValueError:
-                    try:
-                        var2 = self.variables.__getitem__((c[i + 2], c[i]))
-                    except ValueError:
-                        var2 = self.extrapolated_variables.__getitem__(
-                            (c[i], c[i + 2])
-                        )
+                    var3 = extrapolated_variables.__getitem__((t[1], t[2]))
 
-                try:
-                    var3 = self.variables.__getitem__((c[i + 1], c[i + 2]))
-                except ValueError:
-                    var3 = self.variables.__getitem__((c[i + 2], c[i + 1]))
-
-                variables_for_ternary_factors.add((var1, var2, var3))
+            variables_for_ternary_factors.add((var1, var2, var3))
 
         ternary_factor_group = fgroup.EnumFactorGroup(
             variables_for_factors=list(variables_for_ternary_factors),
             factor_configs=TERNARY_FACTOR_CONFIG,
             log_potentials=log_ternary_table,
         )
-        self.fg.add_factors(ternary_factor_group)
+        fg.add_factors(ternary_factor_group)
 
         end = time.time()
         self.logger.info(
             f"Time to add ternary factors: {end-start:.2f} seconds"
         )
 
-    def create_mrf(self, mrf_hp_config: dict) -> fgraph:
-        # Get connected components of the raw data graph
-        cc_sorted, G = self.get_connected_components()
-
-        # Create MRF for the largest connected component
-        subgraph = G.subgraph(cc_sorted[0])
-        self.create_mrf_variables_and_unary_factors(subgraph)
-        self.create_ternary_factors(subgraph, mrf_hp_config)
-
-        return self.fg
+        return fg
 
     # LBP inference
-    def run_inference(self, fg, mrf_hp_config: dict) -> dict:
+    def run_inference(self, mrf_hp_config: dict) -> dict:
         start_time = time.time()
 
-        lbp = infer.build_inferer(fg.bp_state, backend="bp")
-        lbp_arrays = lbp.init()
+        # Get connected components of the raw data graph
+        cc_sorted, G = self.get_connected_components()
+        all_results = {}
 
-        if self.tune_lbp_hp:
-            lbp_arrays, _ = lbp.run_with_diffs(
-                lbp_arrays,
-                num_iters=mrf_hp_config["num_iters"],
-                damping=mrf_hp_config["damping"],
-                temperature=mrf_hp_config["temperature"],
-            )
-        else:
-            lbp_arrays, _ = lbp.run_with_diffs(
-                lbp_arrays,
-                num_iters=self.num_iters,
-                damping=self.damping,
-                temperature=self.temperature,
-            )
+        for cc in cc_sorted:
+            subgraph = G.subgraph(cc)
+            if len(cc) < 8:  # Skip small connected components
+                break
 
-        beliefs = lbp.get_beliefs(lbp_arrays)
-        decoded_states = infer.decode_map_states(beliefs)
-        results = list(decoded_states.values())[0]
+            fg = self.create_mrf(subgraph, mrf_hp_config)
+            # Skip connected components with no extrapolated variables
+            if fg is None:
+                continue
+
+            lbp = infer.build_inferer(fg.bp_state, backend="bp")
+            lbp_arrays = lbp.init()
+
+            if self.tune_lbp_hp:
+                lbp_arrays, _ = lbp.run_with_diffs(
+                    lbp_arrays,
+                    num_iters=mrf_hp_config["num_iters"],
+                    damping=mrf_hp_config["damping"],
+                    temperature=mrf_hp_config["temperature"],
+                )
+            else:
+                lbp_arrays, _ = lbp.run_with_diffs(
+                    lbp_arrays,
+                    num_iters=self.num_iters,
+                    damping=self.damping,
+                    temperature=self.temperature,
+                )
+
+            beliefs = lbp.get_beliefs(lbp_arrays)
+            decoded_states = infer.decode_map_states(beliefs)
+            results = list(decoded_states.values())[0]
+            all_results.update(results)
 
         end_time = time.time()
         self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
 
-        return results
+        return all_results
 
 
 if __name__ == "__main__":
@@ -417,9 +383,7 @@ if __name__ == "__main__":
 
         test_mrf_wrapper = MRFWrapper(test_prior_filepath, tune_lbp_hp=False)
 
-    test_mrf = test_mrf_wrapper.create_mrf(dict(best_hp_config))
-    results = test_mrf_wrapper.run_inference(test_mrf, dict(best_hp_config))
-
+    results = test_mrf_wrapper.run_inference(dict(best_hp_config))
     evaluate_inference_results(
         test_mrf_wrapper.prior_data, results, log_predictions=True
     )

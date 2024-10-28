@@ -71,6 +71,48 @@ class TuningEngine:
         return best_hp_config
 
 
+class SparseDatasetTuningEngine:
+    def __init__(self, exp_config, mrf_wrapper, mrf_hp_space):
+        self.exp_config = exp_config
+        self.mrf_wrapper = mrf_wrapper
+        self.mrf_hp_space = mrf_hp_space
+
+        self.optimizer = get_bo_optimizer(
+            self.exp_config, self.mrf_hp_space, self.bo_target_function
+        )
+        self.exp_state = ExperimentState()
+        self.logger = get_logger()
+
+    def bo_target_function(self, mrf_hp_config: ConfigurationSpace, seed: int):
+        """
+        Target function for Bayesian Optimization.
+        """
+
+        results = self.mrf_wrapper.run_inference(dict(mrf_hp_config))
+        f1_score, accuracy, _, _ = evaluate_inference_results(
+            self.mrf_wrapper.prior_data, results
+        )
+
+        if self.exp_state.best_f1_score < f1_score:
+            self.exp_state.best_f1_score = f1_score
+            self.exp_state.best_associated_accuracy = accuracy
+            self.exp_state.best_hp_config = mrf_hp_config
+
+        if self.exp_state.worst_f1_score > f1_score:
+            self.exp_state.worst_f1_score = f1_score
+            self.exp_state.worst_associated_accuracy = accuracy
+            self.exp_state.worst_hp_config = mrf_hp_config
+
+        return -f1_score
+
+    def run(self):
+        best_hp_config = self.optimizer.optimize()
+
+        self.exp_state.log_best_hp_config(best_hp_config, self.logger)
+
+        return best_hp_config
+
+
 class PriorModelTuningEngine:
     def __init__(
         self,
