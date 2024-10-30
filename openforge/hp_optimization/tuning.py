@@ -89,9 +89,15 @@ class SparseDatasetTuningEngine:
         """
 
         results = self.mrf_wrapper.run_inference(dict(mrf_hp_config))
-        f1_score, accuracy, _, _ = evaluate_inference_results(
-            self.mrf_wrapper.prior_data, results
-        )
+
+        if hasattr(self.mrf_wrapper, "ground_truth"):
+            f1_score, accuracy, _, _ = evaluate_inference_results(
+                self.mrf_wrapper.ground_truth, results
+            )
+        elif hasattr(self.mrf_wrapper, "prior_data"):
+            f1_score, accuracy, _, _ = evaluate_inference_results(
+                self.mrf_wrapper.prior_data, results
+            )
 
         if self.exp_state.best_f1_score < f1_score:
             self.exp_state.best_f1_score = f1_score

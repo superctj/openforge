@@ -48,7 +48,8 @@ def evaluate_inference_results(
         elif hasattr(row, "random_variable_name"):
             var_name = row.random_variable_name
         elif hasattr(row, "l_id") and hasattr(row, "r_id"):
-            var_name = (row.l_id, row.r_id)
+            # var_name = (row.l_id, row.r_id)
+            var_name = (f"l_{row.l_id}", f"r_{row.r_id}")
         else:
             raise AttributeError(
                 "No variable name attribute found in prior data."
@@ -81,13 +82,7 @@ def evaluate_inference_results(
 
         y_prior.append(prior_pred)
 
-        # Temporary fix for the case where we only run MRF inference on the
-        # largest connected component
-        try:
-            pred = int(results[var_name])
-        except KeyError:
-            pred = prior_pred
-
+        pred = int(results.get(var_name, prior_pred))
         y_pred.append(pred)
 
         if log_predictions:
