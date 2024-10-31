@@ -117,7 +117,7 @@ class MRFWrapper:
             mrf_hp_config["delta"],  # 1, 0, 0
             1e-9,  # 1, 0, 1
             1e-9,  # 1, 1, 0
-            1e-9,  # 1, 1, 1
+            mrf_hp_config["epsilon"],  # 1, 1, 1
         ]
         log_ternary_table = np.log(np.array(ternary_table))
         variables_for_ternary_factors = []
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     valid_ground_truth_filepath = os.path.join(
         ground_truth_dir, "validation.csv"
     )
-    test_ground_truth_filepath = os.path.join(prior_dir, "test.csv")
+    test_ground_truth_filepath = os.path.join(ground_truth_dir, "test.csv")
 
     if args.mode == "hp_tuning":
         # Set global random state
@@ -238,29 +238,15 @@ if __name__ == "__main__":
         ).create_hp_space()
 
         # Create MRF wrapper
-        if config.getboolean("hp_optimization", "tune_lbp_hp"):
-            mrf_wrapper = MRFWrapper(
-                valid_prior_dir,
-                valid_ground_truth_filepath,
-                tune_lbp_hp=True,
-            )
-        else:
-            mrf_wrapper = MRFWrapper(
-                valid_prior_dir,
-                valid_ground_truth_filepath,
-                tune_lbp_hp=False,
-                num_iters=config.getint("hp_optimization", "num_iters"),
-                damping=config.getfloat("hp_optimization", "damping"),
-                temperature=config.getfloat("hp_optimization", "temperature"),
-            )
+        mrf_wrapper = MRFWrapper(
+            valid_prior_dir,
+            valid_ground_truth_filepath,
+            tune_lbp_hp=config.getboolean("hp_optimization", "tune_lbp_hp"),
+        )
 
         # Hyperparameter tuning
         tuning_engine = TuningEngine(config, mrf_wrapper, hp_space)
         best_hp_config = tuning_engine.run()
-
-        test_mrf_wrapper = MRFWrapper(
-            test_prior_dir, test_ground_truth_filepath, tune_lbp_hp=True
-        )
     else:
         assert args.mode == "inference", (
             f"Invalid mode: {args.mode}. Mode must either be hp_tuning or "
@@ -268,21 +254,21 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            # "damping": 0.7858213721344507,
-            # "num_iters": 921,
-            # "temperature": 0.9910111614267442,
-            "alpha": 0.9,  # 0.5768611571269355,
-            "beta": 0.7,  # 0.5855811670070769,
-            "gamma": 0.7,  # 0.016516056183874597,
-            "delta": 0.7,  # 0.588351726474382,
+            "alpha": 0.9305105866645444,
+            "beta": 0.9917367209016253,
+            "delta": 0.7884464438389114,
+            "gamma": 0.9691456608663119,
+            "epsilon": 0.15672590094874594,
         }
         logger.info(f"Best hyperparameters:\n{best_hp_config}")
 
-        test_mrf_wrapper = MRFWrapper(
-            test_prior_dir, test_ground_truth_filepath, tune_lbp_hp=False
-        )
-
+    test_mrf_wrapper = MRFWrapper(
+        test_prior_dir,
+        test_ground_truth_filepath,
+        tune_lbp_hp=config.getboolean("hp_optimization", "tune_lbp_hp"),
+    )
     results = test_mrf_wrapper.run_inference(dict(best_hp_config))
+
     evaluate_inference_results(
-        test_mrf_wrapper.prior_data, results, log_predictions=True
+        test_mrf_wrapper.ground_truth, results, log_predictions=True
     )
