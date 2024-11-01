@@ -144,15 +144,25 @@ class PriorModelTuningEngine:
         self.prior_model_wrapper.create_model(dict(hp_config))
         self.prior_model_wrapper.fit()
 
-        y_valid_pred = self.prior_model_wrapper.predict(
-            self.prior_model_wrapper.X_valid
-        )
+        if hasattr(self.prior_model_wrapper, "X_valid"):
+            y_valid_pred = self.prior_model_wrapper.predict(
+                self.prior_model_wrapper.X_valid
+            )
+            f1_score, accuracy, _, _ = evaluate_prior_model_predictions(
+                self.prior_model_wrapper.y_valid,
+                y_valid_pred,
+                multi_class=self.multi_class,
+            )
+        else:
+            y_train_pred = self.prior_model_wrapper.predict(
+                self.prior_model_wrapper.X_train
+            )
 
-        f1_score, accuracy, _, _ = evaluate_prior_model_predictions(
-            self.prior_model_wrapper.y_valid,
-            y_valid_pred,
-            multi_class=self.multi_class,
-        )
+            f1_score, accuracy, _, _ = evaluate_prior_model_predictions(
+                self.prior_model_wrapper.y_train,
+                y_train_pred,
+                multi_class=self.multi_class,
+            )
 
         if self.exp_state.best_f1_score < f1_score:
             self.exp_state.best_f1_score = f1_score
