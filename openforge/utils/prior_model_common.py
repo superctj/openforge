@@ -10,30 +10,31 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
+from sklearn.preprocessing import StandardScaler
 
 
-def standardize_features(
-    X_train: np.array, X_valid: np.array = None, X_test: np.array = None
-):
-    means = np.mean(X_train, axis=0)
-    stds = np.std(X_train, axis=0)
+# def standardize_features(
+#     X_train: np.array, X_valid: np.array = None, X_test: np.array = None
+# ):
+#     means = np.mean(X_train, axis=0)
+#     stds = np.std(X_train, axis=0)
 
-    epsilon = 1e-8
-    stds_adjusted = np.where(stds < epsilon, epsilon, stds)
+#     epsilon = 1e-8
+#     stds_adjusted = np.where(stds < epsilon, epsilon, stds)
 
-    X_train_standardized = (X_train - means) / stds
+#     X_train_standardized = (X_train - means) / stds
 
-    if X_valid is not None:
-        X_valid_standardized = (X_valid - means) / stds_adjusted
-    else:
-        X_valid_standardized = None
+#     if X_valid is not None:
+#         X_valid_standardized = (X_valid - means) / stds_adjusted
+#     else:
+#         X_valid_standardized = None
 
-    if X_test is not None:
-        X_test_standardized = (X_test - means) / stds_adjusted
-    else:
-        X_test_standardized = None
+#     if X_test is not None:
+#         X_test_standardized = (X_test - means) / stds_adjusted
+#     else:
+#         X_test_standardized = None
 
-    return X_train_standardized, X_valid_standardized, X_test_standardized
+#     return X_train_standardized, X_valid_standardized, X_test_standardized
 
 
 def load_sotab_features_and_labels(
@@ -53,16 +54,18 @@ def load_sotab_features_and_labels(
     X_train = np.load(train_feature_vectors_filepath)
     logger.info(f"Training feature vectors shape: {X_train.shape}")
     _, y_train, train_df = load_openforge_sotab_split(train_filepath, logger)
+    assert X_train.shape[0] == y_train.shape[0]
 
     logger.info("Loading test split...")
     X_test = np.load(test_feature_vectors_filepath)
     logger.info(f"Test feature vectors shape: {X_train.shape}")
     _, y_test, test_df = load_openforge_sotab_split(test_filepath, logger)
+    assert X_test.shape[0] == y_test.shape[0]
 
-    logger.info("Standardizing features...")
-    X_train_standardized, _, X_test_standardized = standardize_features(
-        X_train, X_valid=None, X_test=X_test
-    )
+    # logger.info("Standardizing features...")
+    # X_train_standardized, _, X_test_standardized = standardize_features(
+    #     X_train, X_valid=None, X_test=X_test
+    # )
 
     return (
         X_train,
@@ -75,7 +78,10 @@ def load_sotab_features_and_labels(
 
 
 def load_entity_matching_features_and_labels(
-    raw_data_dir: str, feature_vectors_dir: str, logger: logging.Logger
+    raw_data_dir: str,
+    feature_vectors_dir: str,
+    standardize: bool = False,
+    logger: logging.Logger = None,
 ):
     train_filepath = os.path.join(raw_data_dir, "preprocessed_train.json")
     valid_filepath = os.path.join(raw_data_dir, "preprocessed_valid.json")
@@ -111,6 +117,13 @@ def load_entity_matching_features_and_labels(
     y_test = test_df["label"].values
     logger.info(f"Test feature vectors shape: {X_test.shape}")
     logger.info(f"Test labels shape: {y_test.shape}")
+
+    if standardize:
+        logger.info("Standardizing features...")
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_valid = scaler.transform(X_valid)
+        X_test = scaler.transform(X_test)
 
     return (
         X_train,
