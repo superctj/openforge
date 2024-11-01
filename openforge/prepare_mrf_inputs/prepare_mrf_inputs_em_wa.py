@@ -32,6 +32,16 @@ def get_ridge_prior_predictions(model, features: np.ndarray):
     return pred, confdc_scores
 
 
+def get_prior_predictions(model, features: np.ndarray):
+    pred_proba = model.predict_proba(features)
+    pred = (pred_proba[:, 1] >= 0.5).astype(int)
+    confdc_scores = np.max(pred_proba, axis=1)
+    assert pred.shape[0] == features.shape[0]
+    assert confdc_scores.shape[0] == features.shape[0]
+
+    return pred, confdc_scores
+
+
 def collect_entity_info(df: pd.DataFrame):
     l_id_entity_map = {}
     r_id_entity_map = {}
