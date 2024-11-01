@@ -1,0 +1,26 @@
+[
+    {
+        "name": "alpha",
+        "short_descr": "Strength of the L2 regularization term.",
+        "type": "float",
+        "min_val": 0.00001,
+        "max_val": 0.1,
+        "default_val": 0.0001
+    },
+    {
+        "name": "learning_rate_init",
+        "short_descr": "The initial learning rate used.",
+        "type": "float",
+        "min_val": 0.0001,
+        "max_val": 0.01,
+        "default_val": 0.001
+    },
+    {
+        "name": "max_iter",
+        "short_descr": "Maximum number of iterations.",
+        "type": "int",
+        "min_val": 200,
+        "max_val": 1000,
+        "default_val": 200
+    }
+]
