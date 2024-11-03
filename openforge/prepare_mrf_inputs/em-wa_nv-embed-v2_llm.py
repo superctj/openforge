@@ -71,7 +71,6 @@ def run_prior_inference(
     num_retries: int,
     input_dir: str,
     output_dir: str,
-    split: str,
     device,
 ):
     for f in os.listdir(input_dir):
@@ -109,8 +108,8 @@ def run_prior_inference(
                 logger.info(f"prediction: {pred}")
                 logger.info(f"confidence score: {confdc_score}")
                 logger.info("-" * 80)
-                if i >= 2:  # for testing
-                    exit(0)
+                # if i >= 2:  # for testing
+                #     exit(0)
 
             input_df["prior_prediction"] = all_predictions
             input_df["prior_confidence_score"] = all_confdc_scores
@@ -148,7 +147,11 @@ if __name__ == "__main__":
     valid_input_dir = os.path.join(input_dir, "validation")
     test_input_dir = os.path.join(input_dir, "test")
     valid_output_dir = os.path.join(output_dir, "validation")
+    if not os.path.exists(valid_output_dir):
+        os.makedirs(valid_output_dir)
     test_output_dir = os.path.join(output_dir, "test")
+    if not os.path.exists(test_output_dir):
+        os.makedirs(test_output_dir)
 
     model_id = config.get("prior", "model_id")
     max_new_tokens = config.getint("prior", "max_new_tokens")
@@ -168,7 +171,6 @@ if __name__ == "__main__":
         num_retries,
         valid_input_dir,
         valid_output_dir,
-        "validation",
         device,
     )
     run_prior_inference(
@@ -178,6 +180,5 @@ if __name__ == "__main__":
         num_retries,
         test_input_dir,
         test_output_dir,
-        "test",
         device,
     )
