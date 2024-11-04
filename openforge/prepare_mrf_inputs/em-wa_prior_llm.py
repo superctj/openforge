@@ -102,8 +102,8 @@ def run_prior_inference(
         logger.info(f"confidence score: {confdc_score}")
         logger.info("-" * 80)
 
-    input_df["prior_prediction"] = all_predictions
-    input_df["prior_confidence_score"] = all_confdc_scores
+    input_df["prediction"] = all_predictions
+    input_df["confidence_score"] = all_confdc_scores
     input_df.to_json(output_filepath, orient="records", indent=4)
 
 
