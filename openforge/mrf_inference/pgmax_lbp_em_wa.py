@@ -50,6 +50,14 @@ class MRFWrapper:
             raise ValueError(
                 f"Invalid ground truth file format: {ground_truth_filepath}"
             )
+        self.ground_truth.rename(
+            columns={
+                "prior_prediction": "prediction",
+                "prior_confidence_score": "confidence_score",
+            },
+            inplace=True,
+        )
+
         self.tune_lbp_hp = kwargs.get("tune_lbp_hp", False)
 
         if not self.tune_lbp_hp:
@@ -181,7 +189,10 @@ class MRFWrapper:
                 beliefs = lbp.get_beliefs(lbp_arrays)
                 decoded_states = infer.decode_map_states(beliefs)
                 results = list(decoded_states.values())[0]
-                all_results.update(results)
+
+                target_row = prior_df.iloc[0]
+                target_id = (target_row["l_id"], target_row["r_id"])
+                all_results[target_id] = results[target_id]
 
         end_time = time.time()
         self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
@@ -269,14 +280,14 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            "alpha": 0.0014891353521392836,
-            "beta": 0.2874957144160324,
-            "damping": 0.8807569730980639,
-            "delta": 0.1851746803857814,
-            "epsilon": 0.6391119858675276,
-            "gamma": 0.7243474376017154,
-            "num_iters": 353,
-            "temperature": 0.7802549888380104,
+            "alpha": 0.4961767747767814,
+            "beta": 0.004164566978837291,
+            "damping": 0.4250862431226615,
+            "delta": 0.9978804350261843,
+            "epsilon": 7.509069796316291e-05,
+            "gamma": 0.6234876011702514,
+            "num_iters": 819,
+            "temperature": 0.9086850677600916,
         }
         logger.info(f"Best hyperparameters:\n{best_hp_config}")
 
