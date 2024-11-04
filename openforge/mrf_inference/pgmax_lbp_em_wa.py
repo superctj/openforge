@@ -42,7 +42,14 @@ class MRFWrapper:
         **kwargs,
     ):
         self.prior_dir = prior_dir
-        self.ground_truth = pd.read_csv(ground_truth_filepath)
+        if ground_truth_filepath.endswith(".json"):
+            self.ground_truth = pd.read_json(ground_truth_filepath)
+        elif ground_truth_filepath.endswith(".csv"):
+            self.ground_truth = pd.read_csv(ground_truth_filepath)
+        else:
+            raise ValueError(
+                f"Invalid ground truth file format: {ground_truth_filepath}"
+            )
         self.tune_lbp_hp = kwargs.get("tune_lbp_hp", False)
 
         if not self.tune_lbp_hp:
