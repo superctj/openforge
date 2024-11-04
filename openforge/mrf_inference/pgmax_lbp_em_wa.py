@@ -216,16 +216,24 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
-    prior_dir = config.get("io", "prior_dir")
+    mrf_input_dir = config.get("io", "mrf_input_dir")
     ground_truth_dir = config.get("io", "ground_truth_dir")
     random_seed = config.getint("hp_optimization", "random_seed")
 
-    valid_prior_dir = os.path.join(prior_dir, "validation")
-    test_prior_dir = os.path.join(prior_dir, "test")
+    valid_mrf_input_dir = os.path.join(mrf_input_dir, "validation")
+    test_mrf_input_dir = os.path.join(mrf_input_dir, "test")
+
     valid_ground_truth_filepath = os.path.join(
         ground_truth_dir, "validation.csv"
     )
+    if not os.path.exists(valid_ground_truth_filepath):
+        valid_ground_truth_filepath = os.path.join(
+            ground_truth_dir, "validation.json"
+        )
+
     test_ground_truth_filepath = os.path.join(ground_truth_dir, "test.csv")
+    if not os.path.exists(test_ground_truth_filepath):
+        test_ground_truth_filepath = os.path.join(ground_truth_dir, "test.json")
 
     if args.mode == "hp_tuning":
         # Set global random state
@@ -239,7 +247,7 @@ if __name__ == "__main__":
 
         # Create MRF wrapper
         mrf_wrapper = MRFWrapper(
-            valid_prior_dir,
+            valid_mrf_input_dir,
             valid_ground_truth_filepath,
             tune_lbp_hp=config.getboolean("hp_optimization", "tune_lbp_hp"),
         )
@@ -266,7 +274,7 @@ if __name__ == "__main__":
         logger.info(f"Best hyperparameters:\n{best_hp_config}")
 
     test_mrf_wrapper = MRFWrapper(
-        test_prior_dir,
+        test_mrf_input_dir,
         test_ground_truth_filepath,
         tune_lbp_hp=config.getboolean("hp_optimization", "tune_lbp_hp"),
     )
