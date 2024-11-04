@@ -124,7 +124,6 @@ def run_prior_inference(
             # confidence scores
             output_filepath = os.path.join(input_dir, f)
             input_df.to_json(output_filepath, orient="records", indent=4)
-            return
 
 
 if __name__ == "__main__":
@@ -174,11 +173,11 @@ if __name__ == "__main__":
         device,
     )
 
-    # run_prior_inference(
-    #     prior_model,
-    #     tokenizer,
-    #     max_new_tokens,
-    #     num_retries,
-    #     test_output_dir,
-    #     device,
-    # )
+    run_prior_inference(
+        prior_model,
+        tokenizer,
+        max_new_tokens,
+        num_retries,
+        test_output_dir,
+        device,
+    )

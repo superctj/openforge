@@ -181,7 +181,6 @@ def create_mrfs(
                 )
 
                 logger.info("=" * 80)
-                return
 
 
 if __name__ == "__main__":
