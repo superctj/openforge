@@ -99,13 +99,13 @@ class MRFWrapper:
         for _, row in prior_df.iterrows():
             var = variables.__getitem__((row["l_id"], row["r_id"]))
             variables_for_unary_factors.append([var])
-            pred_proba = row["prior_confidence_score"]
+            pred_proba = row["confidence_score"]
 
             # Get around the warning of dividing by zero encountered in log
             if pred_proba == 1:
                 pred_proba = 1 - PRIOR_CONSTANT
 
-            if row["prior_prediction"] == 1:
+            if row["prediction"] == 1:
                 prior = np.log(np.array([1 - pred_proba, pred_proba]))
             else:
                 prior = np.log(np.array([pred_proba, 1 - pred_proba]))
@@ -280,14 +280,14 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            "alpha": 0.4961767747767814,
-            "beta": 0.004164566978837291,
-            "damping": 0.4250862431226615,
-            "delta": 0.9978804350261843,
-            "epsilon": 7.509069796316291e-05,
-            "gamma": 0.6234876011702514,
-            "num_iters": 819,
-            "temperature": 0.9086850677600916,
+            "alpha": 0.8115919686913933,
+            "beta": 0.042933357094144475,
+            "damping": 0.38131944113290556,
+            "delta": 0.511263261473691,
+            "epsilon": 0.018506207697917325,
+            "gamma": 0.17959438539192837,
+            "num_iters": 982,
+            "temperature": 0.8730783883397759,
         }
         logger.info(f"Best hyperparameters:\n{best_hp_config}")
 
