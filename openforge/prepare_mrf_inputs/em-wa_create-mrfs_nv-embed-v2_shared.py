@@ -83,6 +83,74 @@ def generate_embeddings_for_entities(
     return all_embeddings
 
 
+def create_single_mrf(
+    batch_lids,
+    batch_rids,
+    batch_l_entities,
+    batch_r_entities,
+    knn_idx,
+    all_rid,
+    r_id_entity_map,
+    n_neighbors,
+    output_dir,
+    logger,
+):
+    for i in range(len(batch_lids)):
+        l_id = batch_lids[i]
+        r_id = batch_rids[i]
+        l_entity = batch_l_entities[i]
+        r_entity = batch_r_entities[i]
+        logger.info(f"Pair: ({l_id}, {r_id})")
+
+        mrf_l_id = [f"l_{l_id}"]
+        mrf_r_id = [f"r_{r_id}"]
+        mrf_left_entities = [l_entity]
+        mrf_right_entities = [r_entity]
+
+        for j in range(len(knn_idx[i])):
+            neighbor_id = all_rid[knn_idx[i][j]]
+            if neighbor_id == r_id:
+                continue
+
+            mrf_l_id.append(f"l_{l_id}")
+            mrf_r_id.append(f"r_{neighbor_id}")
+            mrf_left_entities.append(l_entity)
+            mrf_right_entities.append(r_id_entity_map[neighbor_id])
+
+        if len(mrf_l_id) > n_neighbors + 1:
+            mrf_l_id.pop()
+            mrf_r_id.pop()
+            mrf_left_entities.pop()
+            mrf_right_entities.pop()
+        assert len(mrf_l_id) == n_neighbors + 1
+
+        for pair in combinations(mrf_r_id, 2):
+            mrf_l_id.append(pair[0])
+            mrf_r_id.append(pair[1])
+
+            l_rid = int(pair[0][2:])
+            r_rid = int(pair[1][2:])
+            mrf_left_entities.append(r_id_entity_map[l_rid])
+            mrf_right_entities.append(r_id_entity_map[r_rid])
+
+        output_filepath = os.path.join(
+            output_dir, f"mrf-input_{l_id}-{r_id}.json"
+        )
+        mrf_input_df = pd.DataFrame(
+            {
+                "l_id": mrf_l_id,
+                "r_id": mrf_r_id,
+                "l_entity": mrf_left_entities,
+                "r_entity": mrf_right_entities,
+                "prediction": [-1] * len(mrf_l_id),  # placeholder
+                "confidence_score": [1.0] * len(mrf_l_id),  # placeholder
+            }
+        )
+        mrf_input_df.to_json(output_filepath, orient="records", indent=4)
+
+        logger.info("=" * 80)
+
+
 def create_mrfs(
     df: pd.DataFrame,
     l_id_entity_map: dict,
@@ -104,83 +172,86 @@ def create_mrfs(
         )
 
     all_rid = list(r_id_entity_map.keys())
-    lid_with_positive_prediction = set(
-        df[df["prediction"] == 1]["l_id"].unique().tolist()
-    )
-    logger.info(
-        f"l_ids with positive predictions: {lid_with_positive_prediction}"
-    )
-
     r_entity_embeddings = generate_embeddings_for_entities(
         all_rid, r_id_entity_map, embedding_model, batch_size, device
     )
-    # +1 to account for rid in the query row
+    # +1 as rid in the query row may appear in the knn result
     knn = NearestNeighbors(n_neighbors=n_neighbors + 1, metric="cosine")
     knn.fit(r_entity_embeddings)
 
-    for l_id, group in df.groupby("l_id"):
-        if l_id not in lid_with_positive_prediction:
-            continue
+    batch_queries = []
+    batch_lids = []
+    batch_rids = []
+    batch_l_entities = []
+    batch_r_entities = []
 
-        l_entity = l_id_entity_map[l_id]
-        query_embedding = embedding_model.encode(
-            [f"{l_entity}.{embedding_model.tokenizer.eos_token}"],
+    for i, row in df.iterrows():
+        if i != 0 and i % batch_size == 0:
+            assert len(batch_queries) == batch_size
+            query_embeddings = embedding_model.encode(
+                batch_queries,
+                batch_size=batch_size,
+                device=device,
+            )
+
+            _, idx = knn.kneighbors(query_embeddings, return_distance=True)
+
+            create_single_mrf(
+                batch_lids,
+                batch_rids,
+                batch_l_entities,
+                batch_r_entities,
+                idx,
+                all_rid,
+                r_id_entity_map,
+                n_neighbors,
+                output_dir,
+                logger,
+            )
+
+            batch_queries = []
+            batch_lids = []
+            batch_rids = []
+            batch_l_entities = []
+            batch_r_entities = []
+
+            # if i == batch_size * 2:  # for testing purposes
+            #     exit(0)
+
+        l_id = row["l_id"]
+        r_id = row["r_id"]
+        l_entity = row["l_entity"]
+        r_entity = row["r_entity"]
+
+        batch_queries.append(
+            f"{l_entity}.{embedding_model.tokenizer.eos_token}"
+        )
+        batch_lids.append(l_id)
+        batch_rids.append(r_id)
+        batch_l_entities.append(l_entity)
+        batch_r_entities.append(r_entity)
+
+    if len(batch_queries) > 0:
+        query_embeddings = embedding_model.encode(
+            batch_queries,
             batch_size=batch_size,
             device=device,
-        )[0]
-        _, idx = knn.kneighbors([query_embedding], return_distance=True)
+        )
 
-        for _, row in group.iterrows():
-            if row["prediction"] == 1:
-                r_id = row["r_id"]
+        _, idx = knn.kneighbors(query_embeddings, return_distance=True)
 
-                logger.info(f"Pair: ({l_id}, {r_id})")
-                logger.info(f"Prediction: {row['prediction']}")
-                logger.info(f"Confidence score: {row['confidence_score']:.2f}")
-
-                mrf_l_id = [f"l_{l_id}"]
-                mrf_r_id = [f"r_{r_id}"]
-                mrf_left_entities = [l_entity]
-                mrf_right_entities = [r_id_entity_map[r_id]]
-
-                for i in range(len(idx[0])):
-                    neighbor_id = all_rid[idx[0][i]]
-                    if neighbor_id == r_id:
-                        continue
-
-                    mrf_l_id.append(f"l_{l_id}")
-                    mrf_r_id.append(f"r_{neighbor_id}")
-                    mrf_left_entities.append(l_entity)
-                    mrf_right_entities.append(r_id_entity_map[neighbor_id])
-
-                for pair in combinations(mrf_r_id, 2):
-                    mrf_l_id.append(pair[0])
-                    mrf_r_id.append(pair[1])
-
-                    l_rid = int(pair[0][2:])
-                    r_rid = int(pair[1][2:])
-                    mrf_left_entities.append(r_id_entity_map[l_rid])
-                    mrf_right_entities.append(r_id_entity_map[r_rid])
-
-                output_filepath = os.path.join(
-                    output_dir, f"mrf-input_{l_id}-{r_id}.json"
-                )
-                mrf_input_df = pd.DataFrame(
-                    {
-                        "l_id": mrf_l_id,
-                        "r_id": mrf_r_id,
-                        "l_entity": mrf_left_entities,
-                        "r_entity": mrf_right_entities,
-                        "prediction": [row["prediction"]] * len(mrf_l_id),
-                        "confidence_score": [row["confidence_score"]]
-                        * len(mrf_l_id),
-                    }
-                )
-                mrf_input_df.to_json(
-                    output_filepath, orient="records", indent=4
-                )
-
-                logger.info("=" * 80)
+        create_single_mrf(
+            batch_lids,
+            batch_rids,
+            batch_l_entities,
+            batch_r_entities,
+            idx,
+            all_rid,
+            r_id_entity_map,
+            n_neighbors,
+            output_dir,
+            logger,
+        )
 
 
 if __name__ == "__main__":
