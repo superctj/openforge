@@ -11,23 +11,32 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     DataCollatorWithPadding,
+    Trainer,
     TrainingArguments,
 )
 
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.llm_common import (
-    CustomTrainer,
+    # CustomTrainer,
     ID2LABEL,
     LABEL2ID,
-    encode_data_matching_input,
-    load_unicorn_benchmark,
-    preprocess_imbalanced_dataset,
+    load_em_walmart_amazon_dataset,
+    # preprocess_imbalanced_dataset,
 )
 from openforge.utils.util import parse_config
+
 
 f1_metric = evaluate.load("f1")
 precision_metric = evaluate.load("precision")
 recall_metric = evaluate.load("recall")
+
+
+def encode_em_walmart_amazon_input(examples, tokenizer):
+    return tokenizer(
+        examples["l_entity"],
+        examples["r_entity"],
+        truncation=True,
+    )
 
 
 def compute_metrics(eval_pred):
@@ -61,7 +70,7 @@ if __name__ == "__main__":
     config = parse_config(args.config_path)
 
     # Create logger
-    output_dir = config.get("exp", "output_dir")
+    output_dir = config.get("io", "output_dir")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -72,12 +81,12 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
-    train_df, valid_df, test_df = load_unicorn_benchmark(
-        config.get("exp", "data_dir")
+    train_df, valid_df, test_df = load_em_walmart_amazon_dataset(
+        config.get("io", "input_dir")
     )
-    train_df, class_weights = preprocess_imbalanced_dataset(
-        train_df, random_seed=config.getint("exp", "random_seed")
-    )
+    # train_df, class_weights = preprocess_imbalanced_dataset(
+    #     train_df, random_seed=config.getint("exp", "random_seed")
+    # )
 
     train_dataset = Dataset.from_pandas(train_df)
     valid_dataset = Dataset.from_pandas(valid_df)
@@ -87,30 +96,36 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 
     tokenized_train_dataset = train_dataset.map(
-        encode_data_matching_input,
+        encode_em_walmart_amazon_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "object_1",
-            "object_2",
+            "l_id",
+            "r_id",
+            "l_entity",
+            "r_entity",
         ],  # A list of columns to remove after applying the function
     )
     tokenized_valid_dataset = valid_dataset.map(
-        encode_data_matching_input,
+        encode_em_walmart_amazon_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "object_1",
-            "object_2",
+            "l_id",
+            "r_id",
+            "l_entity",
+            "r_entity",
         ],  # A list of columns to remove after applying the function
     )
     tokenized_test_dataset = test_dataset.map(
-        encode_data_matching_input,
+        encode_em_walmart_amazon_input,
         batched=True,
         fn_kwargs={"tokenizer": tokenizer},
         remove_columns=[
-            "object_1",
-            "object_2",
+            "l_id",
+            "r_id",
+            "l_entity",
+            "r_entity",
         ],  # A list of columns to remove after applying the function
     )
 
@@ -132,7 +147,7 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     )
-    # model.to(device)
+    # model = model.to(device)
 
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
@@ -158,7 +173,7 @@ if __name__ == "__main__":
         greater_is_better=True,
     )
 
-    trainer = CustomTrainer(
+    trainer = Trainer(
         model=model,
         args=training_args,
         tokenizer=tokenizer,
@@ -166,9 +181,9 @@ if __name__ == "__main__":
         eval_dataset=tokenized_valid_dataset,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
-        class_weights=torch.tensor(class_weights, dtype=torch.float32).to(
-            device
-        ),
+        # class_weights=torch.tensor(class_weights, dtype=torch.float32).to(
+        #     device
+        # ),
     )
 
     trainer.train()
