@@ -1,6 +1,12 @@
 import argparse
+import multiprocessing
 import os
+
+multiprocessing.set_start_method("spawn", force=True)
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import time
+
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
@@ -39,6 +45,7 @@ class MRFWrapper:
         self,
         prior_dir: str,
         ground_truth_filepath: str,
+        batch_size: int,
         **kwargs,
     ):
         self.prior_dir = prior_dir
@@ -57,7 +64,7 @@ class MRFWrapper:
             },
             inplace=True,
         )
-
+        self.batch_size = batch_size
         self.tune_lbp_hp = kwargs.get("tune_lbp_hp", False)
 
         if not self.tune_lbp_hp:
@@ -68,7 +75,7 @@ class MRFWrapper:
         self.logger = get_logger()
 
     def create_mrf(self, prior_df: pd.DataFrame, mrf_hp_config: dict) -> fgraph:
-        start = time.time()
+        # start = time.time()
         var_identifiers = []
         ternary_combos = []
         l_id = None
@@ -86,13 +93,13 @@ class MRFWrapper:
         variables = vgroup.VarDict(num_states=2, variable_names=var_identifiers)
         fg = fgraph.FactorGraph(variables)
 
-        end = time.time()
-        self.logger.info(
-            f"Time to create and add MRF variables: {end-start:.2f} seconds"
-        )
+        # end = time.time()
+        # self.logger.info(
+        #     f"Time to create and add MRF variables: {end-start:.2f} seconds"
+        # )
 
         # add unary factors
-        start = time.time()
+        # start = time.time()
         variables_for_unary_factors = []
         log_unary_potentials = []
 
@@ -102,8 +109,8 @@ class MRFWrapper:
             pred_proba = row["confidence_score"]
 
             # Get around the warning of dividing by zero encountered in log
-            if pred_proba == 1:
-                pred_proba = 1 - PRIOR_CONSTANT
+            if pred_proba > 0.9:
+                pred_proba -= PRIOR_CONSTANT
 
             if row["prediction"] == 1:
                 prior = np.log(np.array([1 - pred_proba, pred_proba]))
@@ -119,10 +126,10 @@ class MRFWrapper:
         )
         fg.add_factors(unary_factor_group)
 
-        end = time.time()
-        self.logger.info(f"Time to add unary factors: {end-start:.2f} seconds")
+        # end = time.time()
+        # self.logger.info(f"Time to add unary factors: {end-start:.2f} seconds") # noqa: E501
 
-        start = time.time()
+        # start = time.time()
         # add ternary factors
         ternary_table = [
             mrf_hp_config["alpha"],  # 0, 0, 0
@@ -150,49 +157,65 @@ class MRFWrapper:
         )
         fg.add_factors(ternary_factor_group)
 
-        end = time.time()
-        self.logger.info(
-            f"Time to add ternary factors: {end-start:.2f} seconds"
-        )
+        # end = time.time()
+        # self.logger.info(
+        #     f"Time to add ternary factors: {end-start:.2f} seconds"
+        # )
 
         return fg
+
+    def run_single_inference(
+        self, prior_filename: str, mrf_hp_config: dict
+    ) -> dict:
+        prior_filepath = os.path.join(self.prior_dir, prior_filename)
+        prior_df = pd.read_json(prior_filepath)
+        fg = self.create_mrf(prior_df, mrf_hp_config)
+
+        lbp = infer.build_inferer(fg.bp_state, backend="bp")
+        lbp_arrays = lbp.init()
+
+        if self.tune_lbp_hp:
+            lbp_arrays, _ = lbp.run_with_diffs(
+                lbp_arrays,
+                num_iters=mrf_hp_config["num_iters"],
+                damping=mrf_hp_config["damping"],
+                temperature=mrf_hp_config["temperature"],
+            )
+        else:
+            lbp_arrays, _ = lbp.run_with_diffs(
+                lbp_arrays,
+                num_iters=self.num_iters,
+                damping=self.damping,
+                temperature=self.temperature,
+            )
+
+        beliefs = lbp.get_beliefs(lbp_arrays)
+        decoded_states = infer.decode_map_states(beliefs)
+        results = list(decoded_states.values())[0]
+
+        target_row = prior_df.iloc[0]
+        target_id = (target_row["l_id"], target_row["r_id"])
+
+        return target_id, results[target_id]
 
     # LBP inference
     def run_inference(self, mrf_hp_config: dict) -> dict:
         start_time = time.time()
         all_results = {}
 
-        for prior_filename in os.listdir(self.prior_dir):
-            if prior_filename.endswith(".json"):
-                prior_filepath = os.path.join(self.prior_dir, prior_filename)
-                prior_df = pd.read_json(prior_filepath)
-                fg = self.create_mrf(prior_df, mrf_hp_config)
+        filenames = [
+            f for f in os.listdir(self.prior_dir) if f.endswith(".json")
+        ]
 
-                lbp = infer.build_inferer(fg.bp_state, backend="bp")
-                lbp_arrays = lbp.init()
+        with ProcessPoolExecutor(max_workers=self.batch_size) as executor:
+            futures = {
+                executor.submit(self.run_single_inference, f, mrf_hp_config): f
+                for f in filenames
+            }
 
-                if self.tune_lbp_hp:
-                    lbp_arrays, _ = lbp.run_with_diffs(
-                        lbp_arrays,
-                        num_iters=mrf_hp_config["num_iters"],
-                        damping=mrf_hp_config["damping"],
-                        temperature=mrf_hp_config["temperature"],
-                    )
-                else:
-                    lbp_arrays, _ = lbp.run_with_diffs(
-                        lbp_arrays,
-                        num_iters=self.num_iters,
-                        damping=self.damping,
-                        temperature=self.temperature,
-                    )
-
-                beliefs = lbp.get_beliefs(lbp_arrays)
-                decoded_states = infer.decode_map_states(beliefs)
-                results = list(decoded_states.values())[0]
-
-                target_row = prior_df.iloc[0]
-                target_id = (target_row["l_id"], target_row["r_id"])
-                all_results[target_id] = results[target_id]
+            for future in as_completed(futures):
+                target_id, result = future.result()
+                all_results[target_id] = result
 
         end_time = time.time()
         self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
@@ -236,6 +259,7 @@ if __name__ == "__main__":
 
     mrf_input_dir = config.get("io", "mrf_input_dir")
     ground_truth_dir = config.get("io", "ground_truth_dir")
+    batch_size = config.getint("io", "batch_size")
     random_seed = config.getint("hp_optimization", "random_seed")
 
     valid_mrf_input_dir = os.path.join(mrf_input_dir, "validation")
@@ -267,6 +291,7 @@ if __name__ == "__main__":
         mrf_wrapper = MRFWrapper(
             valid_mrf_input_dir,
             valid_ground_truth_filepath,
+            batch_size,
             tune_lbp_hp=config.getboolean("hp_optimization", "tune_lbp_hp"),
         )
 
@@ -294,6 +319,7 @@ if __name__ == "__main__":
     test_mrf_wrapper = MRFWrapper(
         test_mrf_input_dir,
         test_ground_truth_filepath,
+        batch_size,
         tune_lbp_hp=config.getboolean("hp_optimization", "tune_lbp_hp"),
     )
     results = test_mrf_wrapper.run_inference(dict(best_hp_config))
