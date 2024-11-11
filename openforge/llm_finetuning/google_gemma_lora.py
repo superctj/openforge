@@ -95,6 +95,9 @@ if __name__ == "__main__":
     model_id = config.get("llm", "model_id")
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 
+    if model_id.startswith("Qwen"):
+        tokenizer.pad_token = tokenizer.eos_token
+
     tokenized_train_dataset = train_dataset.map(
         encode_em_walmart_amazon_input,
         batched=True,
@@ -147,7 +150,9 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     )
-    # model = model.to(device)
+
+    if model_id.startswith("Qwen"):
+        model.config.pad_token_id = tokenizer.eos_token_id
 
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
