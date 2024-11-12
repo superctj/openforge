@@ -7,6 +7,7 @@ import torch
 
 from datasets import Dataset
 from peft import LoraConfig, TaskType, get_peft_model
+from sklearn.utils.class_weight import compute_class_weight
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -54,6 +55,30 @@ def compute_metrics(eval_pred):
     return {"f1": f1, "precision": precision, "recall": recall}
 
 
+class CustomTrainer(Trainer):
+    def __init__(self, class_weights, label_smoothing, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+        self.label_smoothing = label_smoothing
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+
+        loss_fct = torch.nn.CrossEntropyLoss(
+            weight=torch.tensor(
+                self.class_weights,
+                device=model.device,
+                dtype=logits.dtype,
+            ),
+            label_smoothing=self.label_smoothing,
+        )
+        loss = loss_fct(logits, labels)
+
+        return (loss, outputs) if return_outputs else loss
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -84,9 +109,12 @@ if __name__ == "__main__":
     train_df, valid_df, test_df = load_em_walmart_amazon_dataset(
         config.get("io", "input_dir")
     )
-    # train_df, class_weights = preprocess_imbalanced_dataset(
-    #     train_df, random_seed=config.getint("exp", "random_seed")
-    # )
+    class_weights = compute_class_weight(
+        class_weight="balanced",
+        classes=np.unique(train_df["label"]),
+        y=train_df["label"],
+    )
+    logger.info(f"Class weights: {class_weights}")
 
     train_dataset = Dataset.from_pandas(train_df)
     valid_dataset = Dataset.from_pandas(valid_df)
@@ -150,11 +178,15 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     )
-
     if model_id.startswith("Qwen"):
         model.config.pad_token_id = tokenizer.eos_token_id
 
     model = get_peft_model(model, peft_config)
+    # Check if the score layer is trainable
+    for name, param in model.named_parameters():
+        if name == "score.weight":
+            assert param.requires_grad
+
     model.print_trainable_parameters()
 
     # Pad the sentences to the longest length in a batch during collation
@@ -178,7 +210,16 @@ if __name__ == "__main__":
         greater_is_better=True,
     )
 
-    trainer = Trainer(
+    # trainer = Trainer(
+    #     model=model,
+    #     args=training_args,
+    #     tokenizer=tokenizer,
+    #     train_dataset=tokenized_train_dataset,
+    #     eval_dataset=tokenized_valid_dataset,
+    #     data_collator=data_collator,
+    #     compute_metrics=compute_metrics,
+    # )
+    trainer = CustomTrainer(
         model=model,
         args=training_args,
         tokenizer=tokenizer,
@@ -186,9 +227,8 @@ if __name__ == "__main__":
         eval_dataset=tokenized_valid_dataset,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
-        # class_weights=torch.tensor(class_weights, dtype=torch.float32).to(
-        #     device
-        # ),
+        class_weights=class_weights,
+        label_smoothing=config.getfloat("llm", "label_smoothing"),
     )
 
     trainer.train()
