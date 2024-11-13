@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=qwen2.5-7b-instruct_lora
+#SBATCH --job-name=prior-inference_gemma-2-9b-it_lora
 #SBATCH --partition=spgpu
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
@@ -12,5 +12,5 @@
 source ~/.bash_profile
 conda activate huggingface
 
-python ./openforge/llm_finetuning/google_gemma_lora.py \
-    --config_path=./openforge/llm_finetuning/exp_configs/em_walmart-amazon/qwen2.5-7b-instruct_lora.ini
+python ./openforge/llm_finetuning/evaluate_em_walmart_amazon.py \
+    --config_path=./openforge/llm_finetuning/exp_configs/em_walmart-amazon/prior_gemma-2-9b-it_lora.ini

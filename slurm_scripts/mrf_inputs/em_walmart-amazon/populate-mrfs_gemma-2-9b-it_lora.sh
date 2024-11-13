@@ -11,7 +11,6 @@
 
 source ~/.bash_profile
 conda activate huggingface
-export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.11/site-packages/nvidia/cuda_nvrtc/lib
 
 python ./openforge/llm_finetuning/populate_mrf_inputs_llm.py \
     --config_path=./openforge/llm_finetuning/exp_configs/em_walmart-amazon/populate-mrfs_nv-embed-v2_gemma-2-9b-it_lora.ini

@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 
 from datasets import Dataset
+from peft import PeftModel
 from torch.utils.data import DataLoader
 from transformers import (
     AutoModelForSequenceClassification,
@@ -27,6 +28,8 @@ def run_prior_inference(
     data_collator,
     input_dir: str,
     output_dir: str,
+    batch_size: int,
+    temperature: float,
     device,
 ):
     for f in os.listdir(input_dir):
@@ -55,7 +58,7 @@ def run_prior_inference(
 
             input_dataloader = DataLoader(
                 tokenized_input_dataset,
-                batch_size=config.getint("llm", "batch_size"),
+                batch_size=batch_size,
                 shuffle=False,
                 collate_fn=data_collator,
             )
@@ -69,15 +72,16 @@ def run_prior_inference(
                 with torch.no_grad():
                     outputs = model(**inputs)
 
-                logits = outputs.logits
+                logits = outputs.logits / temperature
                 batch_preds = logits.argmax(dim=-1)
-
-                preds.extend(batch_preds.tolist())
-                confdc_scores.extend(
+                batch_confdc_scores = (
                     torch.nn.functional.softmax(logits, dim=-1)
                     .max(dim=-1)
-                    .values.tolist()
+                    .values
                 )
+
+                preds.extend(batch_preds.tolist())
+                confdc_scores.extend(batch_confdc_scores.tolist())
 
             input_df["prediction"] = preds
             input_df["confidence_score"] = confdc_scores
@@ -126,11 +130,15 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     )
+    model = PeftModel.from_pretrained(model, config["llm"]["checkpoint_dir"])
     model = model.to(device)
     model.eval()
 
     # Run prior inference
     input_dir = config.get("io", "input_dir")
+    batch_size = config.getint("llm", "batch_size")
+    temperature = config.getfloat("llm", "temperature")
+
     valid_input_dir = os.path.join(input_dir, "validation")
     valid_output_dir = os.path.join(output_dir, "validation")
     if not os.path.exists(valid_output_dir):
@@ -142,6 +150,8 @@ if __name__ == "__main__":
         data_collator,
         valid_input_dir,
         valid_output_dir,
+        batch_size,
+        temperature,
         device,
     )
 
@@ -156,5 +166,7 @@ if __name__ == "__main__":
         data_collator,
         test_input_dir,
         test_output_dir,
+        batch_size,
+        temperature,
         device,
     )

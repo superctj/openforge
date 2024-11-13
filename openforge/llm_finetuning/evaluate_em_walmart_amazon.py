@@ -29,6 +29,7 @@ def get_predictions(
     data_collator,
     input_df,
     batch_size,
+    temperature,
     output_dir,
     split,
     device,
@@ -75,13 +76,13 @@ def get_predictions(
         with torch.no_grad():
             outputs = model(**inputs)
 
-        logits = outputs.logits
+        logits = outputs.logits / temperature
         batch_preds = logits.argmax(dim=-1)
         batch_confdc_scores = (
             torch.nn.functional.softmax(logits, dim=-1).max(dim=-1).values
         )
-        # logger.info(f"batch_preds: {batch_preds}")
-        # logger.info(f"batch_confdc_scores: {batch_confdc_scores}")
+        logger.info(f"batch_preds: {batch_preds}")
+        logger.info(f"batch_confdc_scores: {batch_confdc_scores}")
 
         preds.extend(batch_preds.tolist())
         confdc_scores.extend(batch_confdc_scores.tolist())
@@ -92,8 +93,8 @@ def get_predictions(
     labels = input_df["label"].tolist()
     log_exp_metrics(f"{split}", labels, preds, logger, multi_class=False)
 
-    output_filepath = os.path.join(output_dir, f"{split}.json")
-    input_df.to_json(output_filepath, orient="records", indent=4)
+    # output_filepath = os.path.join(output_dir, f"{split}.json")
+    # input_df.to_json(output_filepath, orient="records", indent=4)
 
 
 if __name__ == "__main__":
@@ -136,6 +137,9 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     )
+    if "qwen2.5-7b-instruct_lora" in config["llm"]["checkpoint_dir"]:
+        model.config.pad_token_id = tokenizer.eos_token_id
+
     model = PeftModel.from_pretrained(model, config["llm"]["checkpoint_dir"])
     model = model.to(device)
     model.eval()
@@ -145,6 +149,7 @@ if __name__ == "__main__":
 
     input_dir = config.get("io", "input_dir")
     batch_size = config.getint("llm", "batch_size")
+    temperature = config.getfloat("llm", "temperature")
 
     valid_filepath = os.path.join(input_dir, "preprocessed_validation.json")
     valid_df = pd.read_json(valid_filepath, orient="records")
@@ -154,6 +159,7 @@ if __name__ == "__main__":
         data_collator,
         valid_df,
         batch_size,
+        temperature,
         output_dir,
         split="validation",
         device=device,
@@ -168,6 +174,7 @@ if __name__ == "__main__":
         data_collator,
         test_df,
         batch_size,
+        temperature,
         output_dir,
         split="test",
         device=device,
