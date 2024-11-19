@@ -84,7 +84,7 @@ def sample_few_shot_examples(
 def craft_entity_matching_user_prompt(
     row: pd.Series, few_shot_df: pd.DataFrame
 ) -> str:
-    prompt = """Entity matching is the task of determining whether two data instances refer to the same real-world entity."""  # noqa: E501
+    prompt = """Entity matching is the task of determining whether two instances refer to the same real-world entity."""  # noqa: E501
 
     if few_shot_df is not None and not few_shot_df.empty:
         prompt += """\n\nFor example,\n\n"""
@@ -92,8 +92,8 @@ def craft_entity_matching_user_prompt(
         fewshot_prompt = "\n\n".join(
             [
                 "Input:\nInstance 1: {}\nInstance 2: {}\n\nOutput:\n{}".format(  # noqa: E501
-                    row["entity_1"],
-                    row["entity_2"],
+                    row["l_entity"],
+                    row["r_entity"],
                     '{"match": true}' if row["label"] else '{"match": false}',
                 )
                 for _, row in few_shot_df.iterrows()
@@ -104,16 +104,16 @@ def craft_entity_matching_user_prompt(
 
     prompt += """
 
-Now, for the following pair of instances, please determine if they refer to the same real-world entity. Return your prediction and confidence score in the following JSON format: '{{"match": true, "confidence score":}}' or '{{"match": false, "confidence score":}}'. Confidence score needs to be greater than 0.5 and smaller than 1.
+Now, for the following pair of instances, please determine if they refer to the same real-world entity. Return your prediction and confidence score in the following JSON format: '{"match": <true or false>, "confidence score": <Confidence score needs to be greater than 0.5 and smaller than 1.>}'. Give only the prediction and the confidence score. No explanation is needed.\n"""  # noqa: E501
 
+    prompt += """
 Input:
 Instance 1: {}
 Instance 2: {}
 
 Output:
 """.format(  # noqa: E501
-        row["entity_1"],
-        row["entity_2"],
+        row["l_entity"], row["r_entity"]
     )
 
     return prompt
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     config = parse_config(args.config_path)
 
     # Create logger
-    output_dir = config.get("results", "output_dir")
+    output_dir = config.get("io", "output_dir")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -146,22 +146,28 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
-    random_seed = config.getint("benchmark", "random_seed")
-    num_shots = config.getint("benchmark", "num_shots")
+    random_seed = config.getint("prompts", "random_seed")
+    num_shots = config.getint("prompts", "num_shots")
 
-    l_table, r_table, train_label_df, valid_label_df, test_label_df = (
-        load_walmart_amazon_datasets(config.get("benchmark", "data_dir"))
-    )
+    # l_table, r_table, train_label_df, valid_label_df, test_label_df = (
+    #     load_walmart_amazon_datasets(config.get("io", "input_dir"))
+    # )
 
-    train_df = preprocess_walmart_amazon_dataset(
-        l_table, r_table, train_label_df, output_dir, "train"
+    # train_df = preprocess_walmart_amazon_dataset(
+    #     l_table, r_table, train_label_df, output_dir, "train"
+    # )
+    # valid_df = preprocess_walmart_amazon_dataset(
+    #     l_table, r_table, valid_label_df, output_dir, "valid"
+    # )
+    # test_df = preprocess_walmart_amazon_dataset(
+    #     l_table, r_table, test_label_df, output_dir, "test"
+    # )
+
+    input_dir = config.get("io", "input_dir")
+    train_df = pd.read_json(
+        os.path.join(input_dir, "preprocessed_training.json")
     )
-    valid_df = preprocess_walmart_amazon_dataset(
-        l_table, r_table, valid_label_df, output_dir, "valid"
-    )
-    test_df = preprocess_walmart_amazon_dataset(
-        l_table, r_table, test_label_df, output_dir, "test"
-    )
+    test_df = pd.read_json(os.path.join(input_dir, "preprocessed_test.json"))
 
     few_shot_df = sample_few_shot_examples(
         train_df, n=num_shots, balanced=True, random_seed=random_seed
