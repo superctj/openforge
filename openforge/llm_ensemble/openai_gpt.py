@@ -46,12 +46,18 @@ def get_gpt_prediction(
         temperature=temperature,
         max_completion_tokens=max_new_tokens,
     )
-    pred = parse_llm_response(response.choices[0].message.content)
+
+    if user_prompt.startswith("Semantic column types"):
+        pred, confdc_score = parse_llm_response(response, keyword="equivalent")
+    else:
+        pred, confdc_score = parse_llm_response(
+            response.choices[0].message.content, keyword="match"
+        )
 
     if logger:
         logger.info(f"Response: {response}")
 
-    return pred
+    return pred, confdc_score
 
 
 if __name__ == "__main__":
@@ -77,7 +83,7 @@ if __name__ == "__main__":
     config = parse_config(args.config_path)
 
     # Create logger
-    output_dir = config.get("exp", "output_dir")
+    output_dir = config.get("io", "output_dir")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -88,12 +94,11 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
-    data_filepath = config.get("exp", "data_filepath")
+    data_filepath = config.get("io", "input_filepath")
     test_df = pd.read_json(data_filepath)
     logger.info(f"\n{test_df.head()}\n")
 
     model_id = config.get("llm", "model_id")
-    temperature = config.getfloat("llm", "temperature")
     max_new_tokens = config.getint("llm", "max_new_tokens")
 
     if args.mode == "inference" or args.mode == "test":
@@ -106,14 +111,22 @@ if __name__ == "__main__":
             logger.info(f"{i+1}/{test_df.shape[0]}:")
 
             prompt = row["prompt"]
-            pred = get_gpt_prediction(
-                client,
-                model_id,
-                user_prompt=prompt,
-                temperature=temperature,
-                max_new_tokens=max_new_tokens,
-                logger=logger,
-            )
+            confdc_score = -1
+
+            count = 0
+            while confdc_score <= 0.5 or confdc_score >= 1:
+                pred, confdc_score = get_gpt_prediction(
+                    client,
+                    model_id,
+                    user_prompt=prompt,
+                    max_new_tokens=max_new_tokens,
+                    logger=logger,
+                )
+
+                count += 1
+                if count >= 3:
+                    confdc_score = 0.6
+                    break
 
             all_predictions.append(pred)
             all_labels.append(int(row["label"]))
@@ -122,7 +135,7 @@ if __name__ == "__main__":
             logger.info("-" * 80)
 
             if args.mode == "test" and i >= 2:
-                break
+                exit(0)
 
         test_df["prediction"] = all_predictions
         output_filename = data_filepath.split("/")[-1].split(".")[0]
