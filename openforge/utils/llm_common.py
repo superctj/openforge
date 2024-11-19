@@ -5,10 +5,12 @@ import re
 
 import numpy as np
 import pandas as pd
-import torch.nn as nn
+
+# import torch.nn as nn
 
 from sklearn.utils.class_weight import compute_class_weight
-from transformers import Trainer
+
+# from transformers import Trainer
 
 
 ID2LABEL = {0: "NONMATCH", 1: "MATCH"}
@@ -124,6 +126,18 @@ def load_unicorn_benchmark(data_dir: str):
     train_df.columns = header
     valid_df.columns = header
     test_df.columns = header
+
+    return train_df, valid_df, test_df
+
+
+def load_em_walmart_amazon_dataset(data_dir: str):
+    train_df = pd.read_json(
+        os.path.join(data_dir, "preprocessed_training.json")
+    )
+    valid_df = pd.read_json(
+        os.path.join(data_dir, "preprocessed_validation.json")
+    )
+    test_df = pd.read_json(os.path.join(data_dir, "preprocessed_test.json"))
 
     return train_df, valid_df, test_df
 
@@ -252,7 +266,7 @@ def craft_sotab_user_prompt(
 
     prompt += """
 
-Now, for the following pair of semantic column types, please determine if they are equivalent. Return your prediction and confidence score in the following JSON format: '{{"equivalent": true, "confidence score":}}' or '{{"equivalent": false, "confidence score":}}'. Confidence score needs to be greater than 0.5 and smaller than 1.
+Now, for the following pair of semantic column types, please determine if they are equivalent.
 
 Input:
 Semantic column type 1: {}
@@ -260,6 +274,8 @@ Sample column values for type 1: {}
 
 Semantic column type 2: {}
 Sample column values for type 2: {}
+
+Return your prediction and confidence score in the following JSON format: '{{"equivalent": true, "confidence score": 0.75}}'. The prediction can only be true of false, and the confidence score needs to be greater than 0.5 and smaller than 1.
 
 Output:
 """.format(  # noqa: E501
@@ -270,6 +286,9 @@ Output:
     )
 
     return prompt
+
+
+# Return your prediction and confidence score in the following JSON format: '{{"equivalent": true, "confidence score":}}' or '{{"equivalent": false, "confidence score":}}'. Confidence score needs to be greater than 0.5 and smaller than 1. # noqa: E501
 
 
 def craft_sotab_user_prompt_w_single_token_response(
@@ -497,15 +516,23 @@ def encode_data_matching_input(examples, tokenizer):
     )
 
 
-class CustomTrainer(Trainer):
-    def __init__(self, class_weights, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.class_weights = class_weights
+def encode_em_walmart_amazon_input(examples, tokenizer):
+    return tokenizer(
+        examples["l_entity"],
+        examples["r_entity"],
+        truncation=True,
+    )
 
-    def compute_loss(self, model, inputs, return_outputs=False):
-        labels = inputs.get("labels")
-        outputs = model(**inputs)
-        logits = outputs.logits
-        loss = nn.CrossEntropyLoss(weight=self.class_weights)(logits, labels)
 
-        return (loss, outputs) if return_outputs else loss
+# class CustomTrainer(Trainer):
+#     def __init__(self, class_weights, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.class_weights = class_weights
+
+#     def compute_loss(self, model, inputs, return_outputs=False):
+#         labels = inputs.get("labels")
+#         outputs = model(**inputs)
+#         logits = outputs.logits
+#         loss = nn.CrossEntropyLoss(weight=self.class_weights)(logits, labels)
+
+#         return (loss, outputs) if return_outputs else loss
