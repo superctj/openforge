@@ -504,6 +504,10 @@ def parse_llm_response(response: str, keyword: str = "equivalent") -> int:
         logger.info(f"Invalid response: {json_str}. Original error: {e}")
         pred = 0
         confdc_score = -1
+    except ValueError as e:
+        logger.info(f"Invalid response: {json_str}. Original error: {e}")
+        pred = 0
+        confdc_score = -1
 
     return pred, confdc_score
 
