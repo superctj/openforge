@@ -47,15 +47,15 @@ def get_gpt_prediction(
         max_completion_tokens=max_new_tokens,
     )
 
+    if logger:
+        logger.info(f"Response: {response}")
+
     if user_prompt.startswith("Semantic column types"):
         pred, confdc_score = parse_llm_response(response, keyword="equivalent")
     else:
         pred, confdc_score = parse_llm_response(
             response.choices[0].message.content, keyword="match"
         )
-
-    if logger:
-        logger.info(f"Response: {response}")
 
     return pred, confdc_score
 
