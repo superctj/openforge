@@ -57,7 +57,7 @@ class RidgeClassifierTuningWrapper:
             ) = load_entity_matching_features_and_labels(
                 raw_data_dir,
                 feature_vectors_dir,
-                standardize=True,
+                standardize=False,
                 logger=logger,
             )
         else:
@@ -166,6 +166,13 @@ if __name__ == "__main__":
     elif args.mode == "train_w_default_hp":
         prior_model_wrapper.create_default_model()
         prior_model_wrapper.fit()
+
+        # Save model
+        model_save_filepath = os.path.join(
+            output_dir, f"{MODEL_NAME}_default.pkl"
+        )
+        with open(model_save_filepath, "wb") as f:
+            pickle.dump(prior_model_wrapper.clf, f)
     else:
         assert args.mode == "test", (
             f"Invalid mode: {args.mode}. Mode can only be train_w_default_hp, "

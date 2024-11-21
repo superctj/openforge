@@ -83,18 +83,28 @@ def load_entity_matching_features_and_labels(
     standardize: bool = False,
     logger: logging.Logger = None,
 ):
-    train_filepath = os.path.join(raw_data_dir, "preprocessed_train.json")
-    valid_filepath = os.path.join(raw_data_dir, "preprocessed_valid.json")
+    train_filepath = os.path.join(raw_data_dir, "preprocessed_training.json")
+    valid_filepath = os.path.join(raw_data_dir, "preprocessed_validation.json")
     test_filepath = os.path.join(raw_data_dir, "preprocessed_test.json")
 
+    # train_feature_vectors_filepath = os.path.join(
+    #     feature_vectors_dir, "training_embeddings.npy"
+    # )
+    # valid_feature_vectors_filepath = os.path.join(
+    #     feature_vectors_dir, "validation_embeddings.npy"
+    # )
+    # test_feature_vectors_filepath = os.path.join(
+    #     feature_vectors_dir, "test_embeddings.npy"
+    # )
+
     train_feature_vectors_filepath = os.path.join(
-        feature_vectors_dir, "training_embeddings.npy"
+        feature_vectors_dir, "training.npy"
     )
     valid_feature_vectors_filepath = os.path.join(
-        feature_vectors_dir, "validation_embeddings.npy"
+        feature_vectors_dir, "validation.npy"
     )
     test_feature_vectors_filepath = os.path.join(
-        feature_vectors_dir, "test_embeddings.npy"
+        feature_vectors_dir, "test.npy"
     )
 
     logger.info("Loading training split...")

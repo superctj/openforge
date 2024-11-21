@@ -54,7 +54,10 @@ class GBDTTuningWrapper:
                 self.valid_df,
                 self.test_df,
             ) = load_entity_matching_features_and_labels(
-                raw_data_dir, feature_vectors_dir, logger
+                raw_data_dir,
+                feature_vectors_dir,
+                standardize=False,
+                logger=logger,
             )
         else:
             raise ValueError(f"Unsupported task: {task}.")
