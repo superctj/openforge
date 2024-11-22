@@ -274,7 +274,7 @@ if __name__ == "__main__":
 
                 count += 1
                 if count >= 10:
-                    confdc_score = 0.95
+                    confdc_score = 0.6
                     break
             # pred, confdc_score = get_llm_prediction_from_single_token(
             #     model,

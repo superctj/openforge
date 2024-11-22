@@ -69,8 +69,9 @@ def run_prior_inference(
     output_filepath: str,
     device,
 ):
+    if "prediction" in input_df.columns:
+        input_df = input_df.drop(columns=["prediction", "confidence_score"])
 
-    input_df = input_df.drop(columns=["prediction", "confidence_score"])
     all_predictions = []
     all_confdc_scores = []
 
@@ -133,8 +134,10 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     input_dir = config.get("io", "input_dir")
-    valid_input_filepath = os.path.join(input_dir, "validation.csv")
-    test_input_filepath = os.path.join(input_dir, "test.csv")
+    valid_input_filepath = os.path.join(
+        input_dir, "preprocessed_validation.json"
+    )
+    test_input_filepath = os.path.join(input_dir, "preprocessed_test.json")
 
     model_id = config.get("prior", "model_id")
     max_new_tokens = config.getint("prior", "max_new_tokens")
@@ -147,8 +150,11 @@ if __name__ == "__main__":
     model = model.to(device)
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 
-    valid_df = pd.read_csv(valid_input_filepath)
-    valid_output_filepath = os.path.join(output_dir, "validation.json")
+    valid_df = pd.read_json(valid_input_filepath)
+    output_suffix = config.get("io", "output_suffix")
+    valid_output_filepath = os.path.join(
+        output_dir, f"validation_{output_suffix}.json"
+    )
     run_prior_inference(
         model,
         tokenizer,
@@ -159,8 +165,10 @@ if __name__ == "__main__":
         device,
     )
 
-    test_df = pd.read_csv(test_input_filepath)
-    test_output_filepath = os.path.join(output_dir, "test.json")
+    test_df = pd.read_json(test_input_filepath)
+    test_output_filepath = os.path.join(
+        output_dir, f"test_{output_suffix}.json"
+    )
     run_prior_inference(
         model,
         tokenizer,

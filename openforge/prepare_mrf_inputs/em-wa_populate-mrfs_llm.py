@@ -1,9 +1,6 @@
 """
 Populating predictions and confidence scores for MRFs created in
-'em-wa_create-mrfs_nv-embed-v2.py'.
-
-Input directory and output directory are the same as we want to overwrite the 
-placeholder predictions and confidence scores in the input files.
+'em-wa_create-mrfs_nv-embed-v2_shared.py'.
 """
 
 import argparse
@@ -70,6 +67,7 @@ def run_prior_inference(
     max_new_tokens: int,
     num_retries: int,
     input_dir: str,
+    output_dir: str,
     device,
 ):
     for f in os.listdir(input_dir):
@@ -78,17 +76,19 @@ def run_prior_inference(
 
             # This row is in the original dataset and has prior prediction and
             # confidence score
-            first_row = input_df.iloc[0]
-            all_predictions = [first_row["prediction"]]
-            all_confdc_scores = [first_row["confidence_score"]]
+            # first_row = input_df.iloc[0]
+            # all_predictions = [first_row["prediction"]]
+            # all_confdc_scores = [first_row["confidence_score"]]
+            all_predictions = []
+            all_confdc_scores = []
 
             # Drop placeholder columns
             input_df = input_df.drop(columns=["prediction", "confidence_score"])
 
-            for i, row in input_df.iterrows():
-                # Skip the first row as it is in the original dataset
-                if i == 0:
-                    continue
+            for _, row in input_df.iterrows():
+                # # Skip the first row as it is in the original dataset
+                # if i == 0:
+                #     continue
 
                 prompt = (
                     PRIOR_MODEL_INSTRUCTION
@@ -120,9 +120,7 @@ def run_prior_inference(
             input_df["prediction"] = all_predictions
             input_df["confidence_score"] = all_confdc_scores
 
-            # Overwrite the original file with populated predictions and
-            # confidence scores
-            output_filepath = os.path.join(input_dir, f)
+            output_filepath = os.path.join(output_dir, f)
             input_df.to_json(output_filepath, orient="records", indent=4)
 
 
@@ -140,9 +138,17 @@ if __name__ == "__main__":
     config = parse_config(args.config_path)
 
     # Create logger
-    output_dir = config.get("io", "output_dir")  # Output_dir should exist
+    output_dir = config.get("io", "output_dir")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     valid_output_dir = os.path.join(output_dir, "validation")
+    if not os.path.exists(valid_output_dir):
+        os.makedirs(valid_output_dir)
+
     test_output_dir = os.path.join(output_dir, "test")
+    if not os.path.exists(test_output_dir):
+        os.makedirs(test_output_dir)
 
     logger = create_custom_logger(output_dir)
     logger.info(f"Running program: {__file__}\n")
@@ -164,20 +170,28 @@ if __name__ == "__main__":
         prior_model_id, trust_remote_code=True
     )
 
+    input_dir = config.get("io", "input_dir")
+    valid_input_dir = os.path.join(input_dir, "validation")
+    test_input_dir = os.path.join(input_dir, "test")
+
+    logger.info("Populating MRF inputs for validation set")
     run_prior_inference(
         prior_model,
         tokenizer,
         max_new_tokens,
         num_retries,
+        valid_input_dir,
         valid_output_dir,
         device,
     )
 
+    logger.info("Populating MRF inputs for test set")
     run_prior_inference(
         prior_model,
         tokenizer,
         max_new_tokens,
         num_retries,
+        test_input_dir,
         test_output_dir,
         device,
     )
