@@ -142,6 +142,28 @@ def load_em_walmart_amazon_dataset(data_dir: str):
     return train_df, valid_df, test_df
 
 
+def load_icpsr_dataset(data_dir: str):
+    train_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_training.csv")
+    )
+    train_df = train_df[["concept_1", "concept_2", "relation_variable_label"]]
+    train_df.rename(columns={"relation_variable_label": "label"}, inplace=True)
+
+    valid_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_validation.csv")
+    )
+    valid_df = valid_df[["concept_1", "concept_2", "relation_variable_label"]]
+    valid_df.rename(columns={"relation_variable_label": "label"}, inplace=True)
+
+    test_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_test.csv")
+    )
+    test_df = test_df[["concept_1", "concept_2", "relation_variable_label"]]
+    test_df.rename(columns={"relation_variable_label": "label"}, inplace=True)
+
+    return train_df, valid_df, test_df
+
+
 def flatten_list(lst):
     for item in lst:
         if isinstance(item, list):
@@ -526,17 +548,3 @@ def encode_em_walmart_amazon_input(examples, tokenizer):
         examples["r_entity"],
         truncation=True,
     )
-
-
-# class CustomTrainer(Trainer):
-#     def __init__(self, class_weights, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.class_weights = class_weights
-
-#     def compute_loss(self, model, inputs, return_outputs=False):
-#         labels = inputs.get("labels")
-#         outputs = model(**inputs)
-#         logits = outputs.logits
-#         loss = nn.CrossEntropyLoss(weight=self.class_weights)(logits, labels)
-
-#         return (loss, outputs) if return_outputs else loss
