@@ -548,3 +548,11 @@ def encode_em_walmart_amazon_input(examples, tokenizer):
         examples["r_entity"],
         truncation=True,
     )
+
+
+def encode_icpsr_input(examples, tokenizer):
+    return tokenizer(
+        examples["concept_1"],
+        examples["concept_2"],
+        truncation=True,
+    )
