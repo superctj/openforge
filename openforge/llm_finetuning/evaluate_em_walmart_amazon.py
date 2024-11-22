@@ -81,8 +81,8 @@ def get_predictions(
         batch_confdc_scores = (
             torch.nn.functional.softmax(logits, dim=-1).max(dim=-1).values
         )
-        logger.info(f"batch_preds: {batch_preds}")
-        logger.info(f"batch_confdc_scores: {batch_confdc_scores}")
+        # logger.info(f"batch_preds: {batch_preds}")
+        # logger.info(f"batch_confdc_scores: {batch_confdc_scores}")
 
         preds.extend(batch_preds.tolist())
         confdc_scores.extend(batch_confdc_scores.tolist())
@@ -93,8 +93,8 @@ def get_predictions(
     labels = input_df["label"].tolist()
     log_exp_metrics(f"{split}", labels, preds, logger, multi_class=False)
 
-    # output_filepath = os.path.join(output_dir, f"{split}.json")
-    # input_df.to_json(output_filepath, orient="records", indent=4)
+    output_filepath = os.path.join(output_dir, f"{split}.json")
+    input_df.to_json(output_filepath, orient="records", indent=4)
 
 
 if __name__ == "__main__":
