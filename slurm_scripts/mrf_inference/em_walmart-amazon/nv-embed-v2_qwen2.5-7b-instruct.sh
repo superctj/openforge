@@ -1,18 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name=mrf-inference_nv-embed-v2_qwen2.5-7b-instruct
-#SBATCH --partition=spgpu
-#SBATCH --gres=gpu:1
+#SBATCH --job-name=mrf-inference_nv-embed-v2_qwen2.5-7b-instruct-lora_cpu
+#SBATCH --partition=largemem
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64g
-#SBATCH --time=1:00:00
+#SBATCH --cpus-per-task=16
+#SBATCH --mem-per-cpu=16g
+#SBATCH --time=6:00:00
 #SBATCH --account=jag0
 
 source ~/.bash_profile
-conda activate pgmax-gpu
-export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
+conda activate pgmax-cpu
 
-python ./openforge/mrf_inference/pgmax_lbp_em_wa.py \
-    --config_path=./openforge/mrf_inference/tuning_exp_configs/em_walmart-amazon/nv-embed-v2_qwen2.5-7b-instruct.ini \
-    --mode=inference
+python ./openforge/mrf_inference/pgmax_lbp_em_wa_cpu.py \
+    --config_path=./openforge/mrf_inference/tuning_exp_configs/em_walmart-amazon/nv-embed-v2_qwen2.5-7b-instruct-lora_cpu.ini \
+    --mode=hp_tuning

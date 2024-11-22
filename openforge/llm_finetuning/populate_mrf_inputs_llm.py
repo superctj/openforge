@@ -130,6 +130,9 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     )
+    if "qwen2.5-7b-instruct_lora" in config["llm"]["checkpoint_dir"]:
+        model.config.pad_token_id = tokenizer.eos_token_id
+
     model = PeftModel.from_pretrained(model, config["llm"]["checkpoint_dir"])
     model = model.to(device)
     model.eval()
