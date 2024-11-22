@@ -36,7 +36,10 @@ TERNARY_FACTOR_CONFIG = np.array(
 
 class MRFWrapper:
     def __init__(self, prior_filepath: str, **kwargs):
-        self.prior_data = pd.read_csv(prior_filepath)
+        if prior_filepath.endswith(".csv"):
+            self.prior_data = pd.read_csv(prior_filepath)
+        elif prior_filepath.endswith(".json"):
+            self.prior_data = pd.read_json(prior_filepath)
         self.tune_lbp_hp = kwargs.get("tune_lbp_hp", False)
 
         if not self.tune_lbp_hp:
@@ -91,15 +94,17 @@ class MRFWrapper:
             var_name = row.relation_variable_name
             var = variables.__getitem__(var_name)
             variables_for_unary_factors.append([var])
+            pred_proba = row.confidence_score
 
-            pred_proba = row.positive_label_prediction_probability
             # Get around the warning of dividing by zero encountered in log
             if pred_proba == 1:
-                pred_proba = 1 - PRIOR_CONSTANT
-            elif pred_proba == 0:
-                pred_proba = PRIOR_CONSTANT
+                pred_proba -= PRIOR_CONSTANT
 
-            prior = np.log(np.array([1 - pred_proba, pred_proba]))
+            if row.prediction == 1:
+                prior = np.log(np.array([1 - pred_proba, pred_proba]))
+            else:
+                prior = np.log(np.array([pred_proba, 1 - pred_proba]))
+
             log_potentials.append(prior)
 
         unary_factor_group = fgroup.EnumFactorGroup(
@@ -205,7 +210,7 @@ if __name__ == "__main__":
     fix_global_random_state(config.getint("hp_optimization", "random_seed"))
 
     # Create logger
-    output_dir = config.get("results", "output_dir")
+    output_dir = config.get("io", "output_dir")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -224,14 +229,14 @@ if __name__ == "__main__":
         ).create_hp_space()
 
         # Create MRF wrapper
-        if config.getboolean("mrf_lbp", "tune_lbp_hp"):
+        if config.getboolean("hp_optimization", "tune_lbp_hp"):
             mrf_wrapper = MRFWrapper(
-                config.get("mrf_lbp", "validation_filepath"),
+                config.get("io", "validation_filepath"),
                 tune_lbp_hp=True,
             )
         else:
             mrf_wrapper = MRFWrapper(
-                config.get("mrf_lbp", "validation_filepath"),
+                config.get("io", "validation_filepath"),
                 tune_lbp_hp=False,
                 num_iters=config.getint("mrf_lbp", "num_iters"),
                 damping=config.getfloat("mrf_lbp", "damping"),
@@ -277,11 +282,11 @@ if __name__ == "__main__":
             "theta_3": 0.7797573088632,
             "theta_4": 0.7806510038672064,
             "theta_5": 0.21033805365914868,
-            "theta_6": 0.0199164285490524
+            "theta_6": 0.0199164285490524,
         }
 
     test_mrf_wrapper = MRFWrapper(
-        config.get("mrf_lbp", "test_filepath"), tune_lbp_hp=True
+        config.get("io", "test_filepath"), tune_lbp_hp=True
     )
 
     test_mrf = test_mrf_wrapper.create_mrf(dict(best_hp_config))
