@@ -566,7 +566,7 @@ def parse_llm_response(response: str, keyword: str = "equivalent") -> int:
 
     if not matches:
         logger.info(f"No match found in response: {response}")
-        return 0
+        return 0, -1
 
     json_str = matches[0].strip().replace("'", '"')
 
