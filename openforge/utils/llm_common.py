@@ -142,24 +142,39 @@ def load_em_walmart_amazon_dataset(data_dir: str):
     return train_df, valid_df, test_df
 
 
-def load_icpsr_dataset(data_dir: str):
+def load_icpsr_dataset(data_dir: str, rename_columns: bool = True):
+    columns_needed = [
+        "concept_1",
+        "concept_2",
+        "relation_variable_name",
+        "relation_variable_label",
+    ]
+
     train_df = pd.read_csv(
         os.path.join(data_dir, "openforge_icpsr_hyper_training.csv")
     )
-    train_df = train_df[["concept_1", "concept_2", "relation_variable_label"]]
-    train_df.rename(columns={"relation_variable_label": "label"}, inplace=True)
+    train_df = train_df[columns_needed]
 
     valid_df = pd.read_csv(
         os.path.join(data_dir, "openforge_icpsr_hyper_validation.csv")
     )
-    valid_df = valid_df[["concept_1", "concept_2", "relation_variable_label"]]
-    valid_df.rename(columns={"relation_variable_label": "label"}, inplace=True)
+    valid_df = valid_df[columns_needed]
 
     test_df = pd.read_csv(
         os.path.join(data_dir, "openforge_icpsr_hyper_test.csv")
     )
-    test_df = test_df[["concept_1", "concept_2", "relation_variable_label"]]
-    test_df.rename(columns={"relation_variable_label": "label"}, inplace=True)
+    test_df = test_df[columns_needed]
+
+    if rename_columns:
+        train_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+        valid_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+        test_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
 
     return train_df, valid_df, test_df
 
@@ -499,6 +514,46 @@ def craft_data_matching_entailment_prompt(
     data_record: pd.Series, few_shot_df: pd.DataFrame = None
 ) -> str:
     prompt = f"""Data object 1 has description: {data_record["object_1"]}; Data object 2 has description: {data_record["object_2"]}."""  # noqa: E501
+
+    return prompt
+
+
+def craft_icpsr_user_prompt(
+    row: pd.Series,
+    few_shot_df: pd.DataFrame,
+) -> str:
+    prompt = """The task is to determine whether there exists a parent-child relationship between a given pair of concepts, i.e., whether one concept has a broader meaning that the other concept falls under."""  # noqa: E501
+
+    if few_shot_df is not None and not few_shot_df.empty:
+        prompt += """\n\nFor example,\n\n"""
+
+        fewshot_prompt = "\n\n".join(
+            [
+                "Input: ({}, {})\nOutput:{}".format(  # noqa: E501
+                    row.concept_1,
+                    row.concept_2,
+                    (
+                        '{"parent-child": true}'
+                        if row.relation_variable_label
+                        else '{"parent-child": false}'
+                    ),
+                )
+                for row in few_shot_df.itertuples()
+            ]
+        )
+
+        prompt += fewshot_prompt
+
+    prompt += """
+
+Now, for the following pair of concepts, please determine if there is a parent-child relationship between them. Return your prediction and confidence score in the following JSON format: '{{"parent-child": true, "confidence score": 0.75}}'. The prediction can only be true of false, and the confidence score needs to be greater than 0.5 and smaller than 1.
+
+Input: ({}, {})
+Output:
+""".format(  # noqa: E501
+        row["concept_1"],
+        row["concept_2"],
+    )
 
     return prompt
 
