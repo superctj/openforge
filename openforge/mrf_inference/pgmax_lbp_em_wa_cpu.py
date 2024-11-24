@@ -109,7 +109,7 @@ class MRFWrapper:
             pred_proba = row["confidence_score"]
 
             # Get around the warning of dividing by zero encountered in log
-            if pred_proba > 0.9:
+            if pred_proba == 1:
                 pred_proba -= PRIOR_CONSTANT
 
             if row["prediction"] == 1:
