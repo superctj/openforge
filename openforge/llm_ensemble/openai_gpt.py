@@ -51,7 +51,13 @@ def get_gpt_prediction(
         logger.info(f"Response: {response}")
 
     if user_prompt.startswith("Semantic column types"):
-        pred, confdc_score = parse_llm_response(response, keyword="equivalent")
+        pred, confdc_score = parse_llm_response(
+            response.choices[0].message.content, keyword="equivalent"
+        )
+    elif user_prompt.startswith("The task"):
+        pred, confdc_score = parse_llm_response(
+            response.choices[0].message.content, keyword="parent-child"
+        )
     else:
         pred, confdc_score = parse_llm_response(
             response.choices[0].message.content, keyword="match"
@@ -96,6 +102,11 @@ if __name__ == "__main__":
 
     data_filepath = config.get("io", "input_filepath")
     test_df = pd.read_json(data_filepath)
+    if "relation_variable_label" in test_df.columns:
+        test_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+
     logger.info(f"\n{test_df.head()}\n")
 
     model_id = config.get("llm", "model_id")
@@ -105,7 +116,7 @@ if __name__ == "__main__":
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         all_predictions = []
-        all_labels = []
+        all_confdc_scores = []
 
         for i, row in test_df.iterrows():
             logger.info(f"{i+1}/{test_df.shape[0]}:")
@@ -129,15 +140,18 @@ if __name__ == "__main__":
                     break
 
             all_predictions.append(pred)
-            all_labels.append(int(row["label"]))
+            all_confdc_scores.append(confdc_score)
 
-            logger.info(f"prediction={pred}, label={row['label']}")
+            logger.info(f"prediction={pred}, confidence_score={confdc_score}")
+            logger.info(f"label={row['label']}")
             logger.info("-" * 80)
 
-            if args.mode == "test" and i >= 2:
+            if args.mode == "test" and i >= 1:
                 exit(0)
 
         test_df["prediction"] = all_predictions
+        test_df["confidence_score"] = all_confdc_scores
+
         output_filename = data_filepath.split("/")[-1].split(".")[0]
         output_filepath = os.path.join(output_dir, f"{output_filename}.json")
         test_df.to_json(output_filepath, orient="records", indent=4)
@@ -145,8 +159,8 @@ if __name__ == "__main__":
         assert args.mode == "evaluation"
 
         all_predictions = test_df["prediction"].tolist()
-        all_labels = test_df["label"].tolist()
 
+    all_labels = test_df["label"].tolist()
     log_exp_metrics(
         output_filename, all_labels, all_predictions, logger, multi_class=False
     )
