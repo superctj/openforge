@@ -1,23 +1,20 @@
 #!/bin/bash
 #SBATCH --job-name=pgmax-gpu-lbp-scalability
-#SBATCH --partition=gpu
+#SBATCH --partition=spgpu
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=128g
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=256g
 #SBATCH --time=1-00:00:00
-#SBATCH --account=jag98
-#SBATCH --output=/home/congtj/openforge/logs/synthesized_mrf/pgmax_gpu_lbp_scalability.log
+#SBATCH --account=jag0
 
-# # Stop on errors
-# set -Eeuo pipefail
-
-module load cuda/12.1.1
-source ~/.bashrc
+source ~/.bash_profile
 conda activate pgmax-gpu
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
 
-for n in $(seq 300 100 500)
-do
-    python openforge/evaluate_lbp_efficiency.py --num_concepts=${n}
+for n in $(seq 3000 1000 5000); do
+    for k in $(seq 4 4 16); do 
+        python openforge/evaluate_lbp_efficiency.py --num_concepts=$n --k=$k
+    done
 done
