@@ -42,22 +42,46 @@ We use [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/) for Pyth
     conda develop <path to the OpenForge repository, e.g., /home/congtj/openforge>
     ```
 
+## Datasets
+We provide the following datasets for training prior models and running MRF inference. Each dataset is stored in a separate Google Drive folder, which contains raw data and preprocessed data that are ready for running MRF inference.
+
+- [SOTAB-v2](https://drive.google.com/drive/folders/1AxxW_-rueMo58tLGsZx2CsRz8ibjpFeD?usp=sharing)
+- [Walmart-Amazon](https://drive.google.com/drive/folders/1zUIHjL8fneBMYk2J54QLoWMJpQK2hGSr?usp=sharing)
+- [ICPSR](https://drive.google.com/drive/folders/1f0Dm3vscFF4aPnlJwsb7dHvfbAySKQiy?usp=sharing)
 
 ## Quick Start
-1. Generate prior beliefs (e.g., Gradient Boosting Decision Tree on OpenForge-ICPSR benchmark):
-    ```
-    cd openforge/prior_models
+- Run hyperparameter tuning and MRF inference to obtain posterior beliefs:
 
-    python icpsr_hyper_gbdt.py \
-        --config_path=./tuning_exp_configs/icpsr_hyper_gbdt.ini \
-        --mode=train_w_default_hp
+    ```
+    conda activate pgmax-gpu
+
+    cd openforge/mrf_inference
+    
+    python pgmax_lbp_icpsr_hyper.py \
+        --config_path=./tuning_exp_configs/icpsr/qwen2.5-7b-instruct-lora.ini \
+        --mode=hp_tuning
     ```
 
-2. Run Markov Random Field inference to obtain posterior beliefs:
+- Run MRF inference to obtain posterior beliefs (with the best found hyperparameters hard-coded in the program):
+
     ```
+    conda activate pgmax-gpu
+
     cd openforge/mrf_inference
 
     python pgmax_lbp_icpsr_hyper.py \
-        --config_path=./tuning_exp_configs/icpsr_hyper_gbdt_pgmax_lbp.ini \
+        --config_path=./tuning_exp_configs/icpsr/qwen2.5-7b-instruct-lora.ini \
         --mode=inference
     ```
+
+- Fine-tune a LLM with LoRA:
+
+    ```
+    conda activate huggingface
+
+    cd openforge/llm_finetuning
+
+    python google_gemma_lora_icpsr.py \
+        --config_path=./exp_configs/icpsr/qwen2.5-7b-instruct_lora.ini
+    ```
+  
