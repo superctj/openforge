@@ -1,7 +1,7 @@
-# OpenForge
+# OpenForge: Probabilistic Metadata Integration
 
 ## Environment Setup
-Assume using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/) for Python package management on Linux machines. 
+We use [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/) for Python package management on Linux machines. Due to the complexity of the dependencies, we separate the environments for training prior models and running inference over Markov Random Fields (MRFs).
 
 1. Clone this repo in your working directory:
 
@@ -13,37 +13,35 @@ Assume using [Miniconda](https://docs.conda.io/projects/miniconda/en/latest/) fo
     cd openforge
     ```
 
-2. Create and activate the Python environment:
-    ```
-    conda env create -f pgmax_cpu_env.yml
-    ```
+2. Create two independent environments, one for training prior models and the other for running MRF inference:
 
     ```
-    conda activate pgmax-cpu
+    conda env create -f huggingface_env.yml
     ```
 
-    If you have access to GPUs, you can create and activate the GPU environment:
     ```
     conda env create -f pgmax_gpu_env.yml
     ```
 
-    ```
-    conda activate pgmax-gpu
-    ```
-
-    Heads-up: The pgmax-gpu environment depends on the [GPU version of Jax](https://jax.readthedocs.io/en/latest/installation.html), which requires Nvidia driver version to be >= 525.60.13 for CUDA 12 on Linux.
-
-3. Import OpenForge as an editable package to the Python environment
-
-    ```
-    conda develop <path to OpenForge repo>
-    ```
-
-    e.g.,
+    Heads-up: The pgmax-gpu environment depends on the [GPU version of Jax](https://jax.readthedocs.io/en/latest/installation.html), which requires Nvidia driver version to be >= 525.60.13 for CUDA 12 on Linux. You can also choose to create the CPU version of the pgmax environment for running MRF inference:
     
     ```
-    conda develop /home/congtj/openforge
+    conda env create -f pgmax_cpu_env.yml
     ```
+
+
+3. Import OpenForge as an editable package to both environments:
+
+    ```
+    conda activate huggingface
+    conda develop <path to the OpenForge repository, e.g., /home/congtj/openforge>
+    ```
+
+    ```
+    conda activate pgmax-gpu
+    conda develop <path to the OpenForge repository, e.g., /home/congtj/openforge>
+    ```
+
 
 ## Quick Start
 1. Generate prior beliefs (e.g., Gradient Boosting Decision Tree on OpenForge-ICPSR benchmark):
