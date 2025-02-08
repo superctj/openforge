@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from itertools import combinations
+# from itertools import combinations
 
 import networkx as nx
 import pandas as pd
@@ -110,6 +110,22 @@ def profile_connected_components(df: pd.DataFrame):
     print("Total number of mispredictions: ", cumulative_num_mispredictions)
 
 
+def profile_dataset_statistics(input_filepath: str):
+    df = pd.read_csv(input_filepath)
+
+    l_entities = set(df["ltable_id"].unique().tolist())
+    r_entities = set(df["rtable_id"].unique().tolist())
+    total_num_entities = len(l_entities) + len(r_entities)
+    print(f"Number of unique entities: {total_num_entities}")
+
+    num_pairs = df.shape[0]
+    print(f"Number of entity pairs: {num_pairs}")
+
+    num_pos_class_pairs = df[df["label"] == 1].shape[0]
+    prop_pos_class_pairs = num_pos_class_pairs / num_pairs * 100
+    print(f"Proportion of positive class pairs: {prop_pos_class_pairs:.2f}%")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -130,10 +146,26 @@ if __name__ == "__main__":
     # print(f"Number of pairs in the test set: {test_df.shape[0]}")
     # profile_entities(test_df)
 
-    test_prior_filepath = os.path.join(args.data_dir, "test.csv")
-    test_df = pd.read_csv(test_prior_filepath)
-    profile_connected_components(test_df)
+    train_filepath = os.path.join(args.data_dir, "train.csv")
+    valid_filepath = os.path.join(args.data_dir, "valid.csv")
+    test_filepath = os.path.join(args.data_dir, "test.csv")
+
+    # test_df = pd.read_csv(test_prior_filepath)
+    # profile_connected_components(test_df)
 
     # valid_prior_filepath = os.path.join(args.data_dir, "validation.csv")
     # valid_df = pd.read_csv(valid_prior_filepath)
     # profile_connected_components(valid_df)
+
+    train_df = pd.read_csv(train_filepath)
+    valid_df = pd.read_csv(valid_filepath)
+    test_df = pd.read_csv(test_filepath)
+
+    print("Training split:")
+    profile_dataset_statistics(train_filepath)
+
+    print("Validation split:")
+    profile_dataset_statistics(valid_filepath)
+
+    print("Test split:")
+    profile_dataset_statistics(test_filepath)
