@@ -94,6 +94,7 @@ if __name__ == "__main__":
     few_shot_df = sample_few_shot_examples(
         train_df, n=num_shots, balanced=True, random_seed=random_seed
     )
+    logger.info(f"Example few-shot data:\n {few_shot_df.head()}")
 
     create_prompts_per_split(
         valid_df,
