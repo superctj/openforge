@@ -7,6 +7,7 @@ import torch
 
 from datasets import Dataset
 from peft import LoraConfig, TaskType, get_peft_model
+from sklearn.utils.class_weight import compute_class_weight
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -17,19 +18,41 @@ from transformers import (
 
 from openforge.utils.custom_logging import create_custom_logger
 from openforge.utils.llm_common import (
-    CustomTrainer,
     ID2LABEL,
     LABEL2ID,
     encode_data_matching_input,
     load_openforge_sotab_benchmark,
     prepare_sotab_for_sequence_classification,
-    preprocess_imbalanced_dataset,
 )
 from openforge.utils.util import parse_config
 
 f1_metric = evaluate.load("f1")
 precision_metric = evaluate.load("precision")
 recall_metric = evaluate.load("recall")
+
+
+class CustomTrainer(Trainer):
+    def __init__(self, class_weights, label_smoothing, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+        self.label_smoothing = label_smoothing
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+
+        loss_fct = torch.nn.CrossEntropyLoss(
+            weight=torch.tensor(
+                self.class_weights,
+                device=model.device,
+                dtype=logits.dtype,
+            ),
+            label_smoothing=self.label_smoothing,
+        )
+        loss = loss_fct(logits, labels)
+
+        return (loss, outputs) if return_outputs else loss
 
 
 def compute_metrics(eval_pred):
@@ -91,12 +114,12 @@ if __name__ == "__main__":
     logger.info(f"Sample data:\n{train_df['object_1'].head().to_list()}")
     logger.info(f"Sample data:\n{train_df['object_2'].head().to_list()}")
 
-    handle_class_imbalance = config.getboolean("llm", "handle_class_imbalance")
-
-    if handle_class_imbalance:
-        train_df, class_weights = preprocess_imbalanced_dataset(
-            train_df, random_seed=config.getint("exp", "random_seed")
-        )
+    class_weights = compute_class_weight(
+        class_weight="balanced",
+        classes=np.unique(train_df["label"]),
+        y=train_df["label"],
+    )
+    logger.info(f"Class weights: {class_weights}")
 
     train_dataset = Dataset.from_pandas(train_df)
     valid_dataset = Dataset.from_pandas(valid_df)
@@ -138,9 +161,7 @@ if __name__ == "__main__":
     peft_config = LoraConfig(
         task_type=TaskType.SEQ_CLS,
         inference_mode=False,
-        target_modules=[
-            x.strip() for x in config.get("llm", "target_modules").split(",")
-        ],
+        target_modules=["q_proj", "v_proj"],
         r=config.getint("llm", "r"),
         lora_alpha=config.getint("llm", "lora_alpha"),
         lora_dropout=config.getfloat("llm", "lora_dropout"),
@@ -182,29 +203,17 @@ if __name__ == "__main__":
         greater_is_better=True,
     )
 
-    if handle_class_imbalance:
-        trainer = CustomTrainer(
-            model=model,
-            args=training_args,
-            tokenizer=tokenizer,
-            train_dataset=tokenized_train_dataset,
-            eval_dataset=tokenized_valid_dataset,
-            data_collator=data_collator,
-            compute_metrics=compute_metrics,
-            class_weights=torch.tensor(class_weights, dtype=torch.float32).to(
-                device
-            ),
-        )
-    else:
-        trainer = Trainer(
-            model=model,
-            args=training_args,
-            tokenizer=tokenizer,
-            train_dataset=tokenized_train_dataset,
-            eval_dataset=tokenized_valid_dataset,
-            data_collator=data_collator,
-            compute_metrics=compute_metrics,
-        )
+    trainer = CustomTrainer(
+        model=model,
+        args=training_args,
+        tokenizer=tokenizer,
+        train_dataset=tokenized_train_dataset,
+        eval_dataset=tokenized_valid_dataset,
+        data_collator=data_collator,
+        compute_metrics=compute_metrics,
+        class_weights=class_weights,
+        label_smoothing=config.getfloat("llm", "label_smoothing"),
+    )
 
     trainer.train()
 
