@@ -1,10 +1,10 @@
 import argparse
 import os
 
-import pandas as pd
 import torch
 
 from datasets import Dataset
+from peft import PeftModel
 from torch.utils.data import DataLoader
 from transformers import (
     AutoModelForSequenceClassification,
@@ -17,6 +17,8 @@ from openforge.utils.llm_common import (
     ID2LABEL,
     LABEL2ID,
     encode_data_matching_input,
+    load_openforge_sotab_benchmark,
+    prepare_sotab_for_sequence_classification,
 )
 from openforge.utils.prior_model_common import log_exp_metrics
 from openforge.utils.util import parse_config
@@ -55,33 +57,79 @@ def prepare_mrf_inputs_for_entity_matching(
     source_df["confidence_score"] = pred_confdc_scores
 
     # Save the MRF inputs
-    output_filepath = os.path.join(output_dir, f"mrf_{split}_split_inputs.json")
+    output_filepath = os.path.join(output_dir, f"{split}.json")
     source_df.to_json(output_filepath, orient="records", indent=4)
 
 
-def get_predictions(model, dataloader, device):
+def get_predictions(
+    model,
+    tokenizer,
+    data_collator,
+    input_df,
+    batch_size,
+    temperature,
+    output_dir,
+    split,
+    device,
+):
+    input_dataset = Dataset.from_pandas(input_df)
+    tokenized_input_dataset = input_dataset.map(
+        encode_data_matching_input,
+        batched=True,
+        fn_kwargs={"tokenizer": tokenizer},
+        remove_columns=[
+            "object_1",
+            "object_2",
+        ],  # A list of columns to remove after applying the function
+    )
+
+    # Rename the label column to labels because the model expects the argument
+    # to be named labels
+    tokenized_test_dataset = tokenized_input_dataset.rename_column(
+        "label", "labels"
+    )
+
+    # Set the format of the dataset to return PyTorch tensors instead of lists
+    tokenized_test_dataset.set_format(
+        "torch", columns=["input_ids", "attention_mask", "labels"]
+    )
+
+    input_dataloader = DataLoader(
+        tokenized_test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=data_collator,
+    )
+
     preds = []
     confdc_scores = []
-    labels = []
 
-    for batch in dataloader:
+    for batch in input_dataloader:
         inputs = {k: v.to(device) for k, v in batch.items()}
 
         with torch.no_grad():
             outputs = model(**inputs)
 
-        logits = outputs.logits
+        logits = outputs.logits / temperature
         batch_preds = logits.argmax(dim=-1)
+        batch_confdc_scores = (
+            torch.nn.functional.softmax(logits, dim=-1).max(dim=-1).values
+        )
 
         preds.extend(batch_preds.tolist())
-        confdc_scores.extend(
-            torch.nn.functional.softmax(logits, dim=-1)
-            .max(dim=-1)
-            .values.tolist()
-        )
-        labels.extend(inputs["labels"].tolist())
+        confdc_scores.extend(batch_confdc_scores.tolist())
 
-    return preds, confdc_scores, labels
+    input_df["prediction"] = preds
+    input_df["confidence_score"] = confdc_scores
+    input_df.rename(
+        columns={"relation_variable_name": "random_variable_name"}, inplace=True
+    )
+
+    labels = input_df["label"].tolist()
+    log_exp_metrics(split, labels, preds, logger, multi_class=False)
+
+    output_filepath = os.path.join(output_dir, f"{split}.json")
+    input_df.to_json(output_filepath, orient="records", indent=4)
 
 
 if __name__ == "__main__":
@@ -100,7 +148,7 @@ if __name__ == "__main__":
     config = parse_config(args.config_path)
 
     # Create logger
-    output_dir = config.get("exp", "output_dir")
+    output_dir = config.get("io", "output_dir")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -111,48 +159,19 @@ if __name__ == "__main__":
     printable_config = {section: dict(config[section]) for section in config}
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
-    # Load the dataset
-    test_df = pd.read_json(config.get("exp", "test_filepath"))
-    objects_1, objects_2 = [], []
-    for _, row in test_df.iterrows():
-        o1, o2 = row["prompt"].split("; Semantic")
-        objects_1.append(o1)
-        objects_2.append("Semantic " + o2)
-
-    test_df["object_1"] = objects_1
-    test_df["object_2"] = objects_2
-    test_dataset = Dataset.from_pandas(test_df)
+    # For this dataset, training and validation splits are the same
+    _, valid_df, test_df = load_openforge_sotab_benchmark(
+        os.path.join(config.get("io", "input_dir"), "artifact")
+    )
+    valid_df = prepare_sotab_for_sequence_classification(
+        valid_df, root_dir=config.get("io", "input_dir")
+    )
+    test_df = prepare_sotab_for_sequence_classification(
+        test_df, root_dir=config.get("io", "input_dir")
+    )
 
     tokenizer = AutoTokenizer.from_pretrained(config["llm"]["checkpoint_dir"])
-    tokenized_test_dataset = test_dataset.map(
-        encode_data_matching_input,
-        batched=True,
-        fn_kwargs={"tokenizer": tokenizer},
-        remove_columns=[
-            "object_1",
-            "object_2",
-        ],  # A list of columns to remove after applying the function
-    )
-
-    # Rename the label column to labels because the model expects the argument
-    # to be named labels
-    tokenized_test_dataset = tokenized_test_dataset.rename_column(
-        "label", "labels"
-    )
-
-    # Set the format of the dataset to return PyTorch tensors instead of lists
-    tokenized_test_dataset.set_format(
-        "torch", columns=["input_ids", "attention_mask", "labels"]
-    )
-
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
-
-    test_dataloader = DataLoader(
-        tokenized_test_dataset,
-        batch_size=config.getint("llm", "batch_size"),
-        shuffle=False,
-        collate_fn=data_collator,
-    )
 
     # Load the model
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -164,17 +183,37 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
     )
-    model.to(device)
+    if not model.config.pad_token_id:
+        model.config.pad_token_id = model.config.eos_token_id
+
+    model = PeftModel.from_pretrained(model, config["llm"]["checkpoint_dir"])
+    model = model.to(device)
     model.eval()
 
     # Get predictions
-    test_preds, test_confdc_scores, test_labels = get_predictions(
-        model, test_dataloader, device
-    )
-    log_exp_metrics(
-        "Test split", test_labels, test_preds, logger, multi_class=False
+    batch_size = config.getint("llm", "batch_size")
+    temperature = config.getfloat("llm", "temperature")
+
+    get_predictions(
+        model,
+        tokenizer,
+        data_collator,
+        valid_df,
+        batch_size,
+        temperature,
+        output_dir,
+        split="validation",
+        device=device,
     )
 
-    prepare_mrf_inputs_for_entity_matching(
-        test_df, test_preds, test_confdc_scores, output_dir, split="test"
+    get_predictions(
+        model,
+        tokenizer,
+        data_collator,
+        test_df,
+        batch_size,
+        temperature,
+        output_dir,
+        split="test",
+        device=device,
     )
