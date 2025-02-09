@@ -284,9 +284,11 @@ def load_openforge_icpsr_split(
 
     if multi_class:
         logger.info(f"Number of empty relation instances: {np.sum(y == 0)}")
-        logger.info(f"Number of equivalent instances: {np.sum(y == 1)}")
-        logger.info(f"Number of hypernymy instances: {np.sum(y == 2)}")
-        logger.info(f"Number of hyponymy instances: {np.sum(y == 3)}\n")
+        logger.info(f"Number of hypernymy instances: {np.sum(y == 1)}")
+        logger.info(f"Number of hyponymy instances: {np.sum(y == 2)}\n")
+        # logger.info(f"Number of equivalent instances: {np.sum(y == 1)}")
+        # logger.info(f"Number of hypernymy instances: {np.sum(y == 2)}")
+        # logger.info(f"Number of hyponymy instances: {np.sum(y == 3)}\n")
     else:
         logger.info(f"Number of empty relation instances: {np.sum(y == 0)}")
         logger.info(f"Number of hypernymy instances: {np.sum(y == 1)}")
