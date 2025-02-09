@@ -179,6 +179,43 @@ def load_icpsr_dataset(data_dir: str, rename_columns: bool = True):
     return train_df, valid_df, test_df
 
 
+def load_icpsr_hyper_hypo_dataset(data_dir: str, rename_columns: bool = True):
+    columns_needed = [
+        "concept_1",
+        "concept_2",
+        "relation_variable_name",
+        "relation_variable_label",
+    ]
+
+    train_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_hypo_training.csv")
+    )
+    train_df = train_df[columns_needed]
+
+    valid_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_hypo_validation.csv")
+    )
+    valid_df = valid_df[columns_needed]
+
+    test_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_hypo_test.csv")
+    )
+    test_df = test_df[columns_needed]
+
+    if rename_columns:
+        train_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+        valid_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+        test_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+
+    return train_df, valid_df, test_df
+
+
 def flatten_list(lst):
     for item in lst:
         if isinstance(item, list):
