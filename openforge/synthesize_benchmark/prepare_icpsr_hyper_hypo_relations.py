@@ -242,21 +242,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num_train_intances",
         type=str,
-        default=60,
+        default=120,
         help="The number of transitive instances to create the training split.",
     )
 
     parser.add_argument(
         "--num_valid_intances",
         type=str,
-        default=20,
+        default=40,
         help="The number of transitive instances to create the validation split.",  # noqa: E501
     )
 
     parser.add_argument(
         "--num_test_intances",
         type=str,
-        default=20,
+        default=40,
         help="The number of transitive instances to create the test split.",
     )
 
