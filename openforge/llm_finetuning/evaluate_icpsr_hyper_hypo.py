@@ -67,7 +67,9 @@ def get_predictions(
     )
 
     preds = []
-    confdc_scores = []
+    class_0_pred_prob = []
+    class_1_pred_prob = []
+    class_2_pred_prob = []
 
     for batch in input_dataloader:
         inputs = {k: v.to(device) for k, v in batch.items()}
@@ -77,15 +79,17 @@ def get_predictions(
 
         logits = outputs.logits / temperature
         batch_preds = logits.argmax(dim=-1)
-        batch_confdc_scores = (
-            torch.nn.functional.softmax(logits, dim=-1).max(dim=-1).values
-        )
+        batch_prob_scores = torch.nn.functional.softmax(logits, dim=-1)
 
         preds.extend(batch_preds.tolist())
-        confdc_scores.extend(batch_confdc_scores.tolist())
+        class_0_pred_prob.extend(batch_prob_scores[:, 0].tolist())
+        class_1_pred_prob.extend(batch_prob_scores[:, 1].tolist())
+        class_2_pred_prob.extend(batch_prob_scores[:, 2].tolist())
 
     input_df["prediction"] = preds
-    input_df["confidence_score"] = confdc_scores
+    input_df["class_0_prediction_probability"] = class_0_pred_prob
+    input_df["class_1_prediction_probability"] = class_1_pred_prob
+    input_df["class_2_prediction_probability"] = class_2_pred_prob
 
     labels = input_df["relation_variable_label"].tolist()
     log_exp_metrics(f"{split}", labels, preds, logger, multi_class=True)
