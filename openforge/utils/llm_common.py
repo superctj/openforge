@@ -595,6 +595,38 @@ Output:
     return prompt
 
 
+def craft_icpsr_hyper_hypo_user_prompt(
+    row: pd.Series,
+    few_shot_df: pd.DataFrame,
+) -> str:
+    prompt = """The task is to determine the relationship type between a given pair of concepts. There are in total three types of relationships: 0 indicates no relationship, 1 indicates there is a parent-child relationship directed from concept 1 to concept 2, and 2 indicates there is a parent-child relationship directed from concept 2 to concept 1."""  # noqa: E501
+
+    if few_shot_df is not None and not few_shot_df.empty:
+        prompt += """\n\nFor example,\n\n"""
+
+        fewshot_prompt = "\n\n".join(
+            [
+                f"Input: ({row.concept_1}, {row.concept_2})\nOutput: {{'type': {row.relation_variable_label}}}" # noqa: E501
+                for row in few_shot_df.itertuples()
+            ]
+        )
+
+        prompt += fewshot_prompt
+
+    prompt += """
+
+Now, for the following pair of concepts, please predict the relationship type between them. Return your prediction and confidence score in the following JSON format: '{{"type": 1, "confidence score": 0.75}}'. The type can only be 0 or 1 or 2, and the confidence score needs to be greater than 0.33 and smaller than 1.
+
+Input: ({}, {})
+Output:
+""".format(  # noqa: E501
+        row["concept_1"],
+        row["concept_2"],
+    )
+
+    return prompt
+
+
 def parse_llm_response(response: str, keyword: str = "equivalent") -> int:
     logger = logging.getLogger()
 
