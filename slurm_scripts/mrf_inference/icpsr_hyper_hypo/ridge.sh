@@ -1,11 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=icpsr_mrf-inference_ridge
-#SBATCH --partition=largemem
+#SBATCH --partition=spgpu
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=256g
-#SBATCH --time=8:00:00
+#SBATCH --mem=128g
+#SBATCH --time=4:00:00
 #SBATCH --account=jag0
 
 source ~/.bash_profile
