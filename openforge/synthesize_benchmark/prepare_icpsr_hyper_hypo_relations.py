@@ -35,76 +35,71 @@ DataEntry = make_dataclass(
 )
 
 
-def create_splits(
-    source_data: pd.DataFrame,
-    num_train_instances: int,
-    num_valid_instances: int,
-    num_test_instances: int,
-    random_seed: int,
-):
+def create_splits(data_dir: str):
     """
     Create train, valid, and test splits.
     """
-    # Create a list of unique hypernym pairs
-    tuples = source_data[
+   
+    train_tuples = pd.read_csv(os.path.join(data_dir, "training_instances.csv"), header=0, delimiter=",")[
+        ["concept_1", "concept_2", "concept_3"]
+    ].drop_duplicates()
+    valid_tuples = pd.read_csv(os.path.join(data_dir, "validation_instances.csv"), header=0, delimiter=",")[
+        ["concept_1", "concept_2", "concept_3"]
+    ].drop_duplicates()
+    test_tuples = pd.read_csv(os.path.join(data_dir, "test_instances.csv"), header=0, delimiter=",")[
         ["concept_1", "concept_2", "concept_3"]
     ].drop_duplicates()
 
-    # Sample train instances
-    train_tuples = tuples.sample(
-        n=num_train_instances, random_state=random_seed
-    )
+    train_hyper_tuples = train_tuples[:train_tuples.shape[0] // 2]
+    train_hypo_tuples = train_tuples[train_tuples.shape[0] // 2:]
+    assert train_hyper_tuples.shape[0] == train_hypo_tuples.shape[0]
 
-    # Remove train instances from the list
-    tuples = tuples[~tuples.isin(train_tuples)].dropna()
+    valid_hyper_tuples = valid_tuples[:valid_tuples.shape[0] // 2]
+    valid_hypo_tuples = valid_tuples[valid_tuples.shape[0] // 2:]
+    assert valid_hyper_tuples.shape[0] == valid_hypo_tuples.shape[0]
 
-    # Sample valid instances
-    valid_tuples = tuples.sample(
-        n=num_valid_instances, random_state=random_seed
-    )
+    test_hyper_tuples = test_tuples[:test_tuples.shape[0] // 2]
+    test_hypo_tuples = test_tuples[test_tuples.shape[0] // 2:]
+    assert test_hyper_tuples.shape[0] == test_hypo_tuples.shape[0]
 
-    # Remove valid instances from the list
-    tuples = tuples[~tuples.isin(valid_tuples)].dropna()
-
-    # Sample test instances
-    test_tuples = tuples.sample(n=num_test_instances, random_state=random_seed)
-
-    return train_tuples, valid_tuples, test_tuples
+    return (train_hyper_tuples, train_hypo_tuples), (valid_hyper_tuples, valid_hypo_tuples), (test_hyper_tuples, test_hypo_tuples)
 
 
-def collect_concepts_and_relation_instances(split_tuples: pd.DataFrame):
+def collect_concepts_and_relation_instances(hyper_tuples: pd.DataFrame, hypo_tuples: pd.DataFrame):
     """
     Collect concepts and relation instances.
     """
 
-    concepts = set()
+    concepts = []
     relation_instances = {}
 
-    for i, row in enumerate(split_tuples.itertuples()):
+    concepts.extend(hyper_tuples["concept_1"].unique().tolist())
+    concepts.extend(hyper_tuples["concept_2"].unique().tolist())
+    concepts.extend(hyper_tuples["concept_3"].unique().tolist())
+
+    for i, row in enumerate(hyper_tuples.itertuples()):
         concept_1 = row.concept_1
         concept_2 = row.concept_2
         concept_3 = row.concept_3
 
-        if concept_1 not in concepts:
-            concepts.add(concept_1)
+        relation_instances[(concept_1, concept_2)] = 1
+        relation_instances[(concept_2, concept_3)] = 1
+        relation_instances[(concept_1, concept_3)] = 1
 
-        if concept_2 not in concepts:
-            concepts.add(concept_2)
+    concepts.extend(hypo_tuples["concept_3"].unique().tolist())
+    concepts.extend(hypo_tuples["concept_2"].unique().tolist())
+    concepts.extend(hypo_tuples["concept_1"].unique().tolist())
 
-        if concept_3 not in concepts:
-            concepts.add(concept_3)
+    for i, row in enumerate(hypo_tuples.itertuples()):
+        concept_1 = row.concept_1
+        concept_2 = row.concept_2
+        concept_3 = row.concept_3
 
-        # Add relation instances
-        if i < len(split_tuples) // 2:
-            relation_instances[(concept_1, concept_2)] = 1
-            relation_instances[(concept_2, concept_3)] = 1
-            relation_instances[(concept_1, concept_3)] = 1
-        else:
-            relation_instances[(concept_2, concept_1)] = 2
-            relation_instances[(concept_3, concept_2)] = 2
-            relation_instances[(concept_3, concept_1)] = 2
-
-    return list(concepts), relation_instances
+        relation_instances[(concept_3, concept_2)] = 2
+        relation_instances[(concept_2, concept_1)] = 2
+        relation_instances[(concept_3, concept_1)] = 2
+        
+    return concepts, relation_instances
 
 
 def get_concept_signatures(
@@ -233,31 +228,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--source_filepath",
+        "--data_dir",
         type=str,
-        default="/ssd/congtj/openforge/icpsr/artifact/hypernymy_transitivity.csv",  # noqa: E501
-        help="Path to the source file.",
-    )
-
-    parser.add_argument(
-        "--num_train_intances",
-        type=str,
-        default=120,
-        help="The number of transitive instances to create the training split.",
-    )
-
-    parser.add_argument(
-        "--num_valid_intances",
-        type=str,
-        default=40,
-        help="The number of transitive instances to create the validation split.",  # noqa: E501
-    )
-
-    parser.add_argument(
-        "--num_test_intances",
-        type=str,
-        default=40,
-        help="The number of transitive instances to create the test split.",
+        default="/ssd/congtj/openforge/icpsr/artifact/openforge_icpsr_hyper_hypo",  # noqa: E501
+        help="Directory containing source data.",
     )
 
     parser.add_argument(
@@ -270,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="/ssd/congtj/openforge/icpsr/artifact",
+        default="/ssd/congtj/openforge/icpsr/artifact/openforge_icpsr_hyper_hypo",
         help="Directory to save outputs.",
     )
 
@@ -281,17 +255,7 @@ if __name__ == "__main__":
         help="Directory to save logs.",
     )
 
-    parser.add_argument(
-        "--random_seed",
-        type=int,
-        default=12345,
-        help="Random seed for sampling.",
-    )
-
     args = parser.parse_args()
-
-    # Fix random seed
-    random.seed(args.random_seed)
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -303,31 +267,26 @@ if __name__ == "__main__":
     logger.info(f"Running program: {__file__}\n")
     logger.info(f"{args}\n")
 
-    source_data = pd.read_csv(args.source_filepath, header=0, delimiter=",")
     train_tuples, valid_tuples, test_tuples = create_splits(
-        source_data,
-        args.num_train_intances,
-        args.num_valid_intances,
-        args.num_test_intances,
-        args.random_seed,
+        args.data_dir,
     )
 
     train_concepts, train_instances = collect_concepts_and_relation_instances(
-        train_tuples
+        train_tuples[0], train_tuples[1]
     )
 
     logger.info(f"Number of training concepts: {len(train_concepts)}")
     logger.info(f"Number of training instances: {len(train_instances)}")
 
     valid_concepts, valid_instances = collect_concepts_and_relation_instances(
-        valid_tuples
+        valid_tuples[0], valid_tuples[1]
     )
 
     logger.info(f"Number of validation concepts: {len(valid_concepts)}")
     logger.info(f"Number of validation instances: {len(valid_instances)}")
 
     test_concepts, test_instances = collect_concepts_and_relation_instances(
-        test_tuples
+        test_tuples[0], test_tuples[1]
     )
 
     logger.info(f"Number of test concepts: {len(test_concepts)}")
