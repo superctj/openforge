@@ -179,7 +179,36 @@ def load_icpsr_dataset(data_dir: str, rename_columns: bool = True):
     return train_df, valid_df, test_df
 
 
-def load_icpsr_hyper_hypo_dataset(data_dir: str, rename_columns: bool = True):
+def reverse_label(row):
+    if row["label"] == 1:
+        return 2
+    elif row["label"] == 2:
+        return 1
+    else:
+        assert row["label"] == 0
+        return 0
+
+
+def augment_data_with_both_orderings(df: pd.DataFrame):
+    # Create a copy of the DataFrame for reversed pairs
+    df_reversed = df.copy()
+
+    # Swap the concept columns
+    df_reversed["concept_1"], df_reversed["concept_2"] = df["concept_2"], df["concept_1"]
+
+    # Apply the reversed label function row-wise
+    df_reversed["label"] = df_reversed.apply(reverse_label, axis=1)
+
+    # Concatenate the original and reversed data
+    df_augmented = pd.concat([df, df_reversed], ignore_index=True)
+
+    # Optionally shuffle the data
+    df_augmented = df_augmented.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    return df_augmented
+
+
+def load_icpsr_hyper_hypo_dataset(data_dir: str, rename_columns: bool = True, augment_data: bool = False):
     columns_needed = [
         "concept_1",
         "concept_2",
@@ -212,6 +241,11 @@ def load_icpsr_hyper_hypo_dataset(data_dir: str, rename_columns: bool = True):
         test_df.rename(
             columns={"relation_variable_label": "label"}, inplace=True
         )
+
+    if augment_data:
+        train_df = augment_data_with_both_orderings(train_df)
+        valid_df = augment_data_with_both_orderings(valid_df)
+        test_df = augment_data_with_both_orderings(test_df)
 
     return train_df, valid_df, test_df
 
