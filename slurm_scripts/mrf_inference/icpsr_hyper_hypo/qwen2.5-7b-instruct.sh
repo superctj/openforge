@@ -15,4 +15,4 @@ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
 
 python ./openforge/mrf_inference/pgmax_lbp_icpsr_hyper_hypo.py \
     --config_path=./openforge/mrf_inference/tuning_exp_configs/icpsr_hyper_hypo/0_shot/qwen2.5-7b-instruct.ini \
-    --mode=hp_tuning
+    --mode=inference
