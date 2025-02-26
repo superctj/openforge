@@ -52,35 +52,89 @@ class MRFWrapper:
 
     def create_mrf(self, mrf_hp_config: dict) -> fgraph:
         ternary_table = [
-            mrf_hp_config["theta_1"],  # (0, 0, 0)
-            mrf_hp_config["theta_2"],  # (0, 0, 1)
-            mrf_hp_config["theta_3"],  # (0, 0, 2)
-            mrf_hp_config["theta_4"],  # (0, 1, 0)
-            mrf_hp_config["theta_5"],  # (0, 1, 1)
-            1e-9,  # (0, 1, 2)
-            mrf_hp_config["theta_6"],  # (0, 2, 0)
-            1e-9,  # (0, 2, 1)
-            mrf_hp_config["theta_7"],  # (0, 2, 2)
-            mrf_hp_config["theta_8"],  # (1, 0, 0)
-            mrf_hp_config["theta_9"],  # (1, 0, 1)
-            1e-9,  # (1, 0, 2)
-            1e-9,  # (1, 1, 0)
-            mrf_hp_config["theta_10"],  # (1, 1, 1)
-            1e-9,  # (1, 1, 2)
-            mrf_hp_config["theta_11"],  # (1, 2, 0)
-            mrf_hp_config["theta_12"],  # (1, 2, 1)
-            mrf_hp_config["theta_13"],  # (1, 2, 2)
-            mrf_hp_config["theta_14"],  # (2, 0, 0)
-            1e-9,  # (2, 0, 1)
-            mrf_hp_config["theta_15"],  # (2, 0, 2)
-            mrf_hp_config["theta_16"],  # (2, 1, 0)
-            mrf_hp_config["theta_17"],  # (2, 1, 1)
-            mrf_hp_config["theta_18"],  # (2, 1, 2)
-            1e-9,  # (2, 2, 0)
-            1e-9,  # (2, 2, 1)
-            mrf_hp_config["theta_19"],  # (2, 2, 2)
+            # mrf_hp_config["theta_1"],  # (0, 0, 0)
+            # mrf_hp_config["theta_2"],  # (0, 0, 1)
+            # mrf_hp_config["theta_3"],  # (0, 0, 2)
+            # mrf_hp_config["theta_4"],  # (0, 1, 0)
+            # 1e-9,  # (0, 1, 1)
+            # 1e-9,  # (0, 1, 2)
+            # mrf_hp_config["theta_5"],  # (0, 2, 0)
+            # 1e-9,  # (0, 2, 1)
+            # mrf_hp_config["theta_6"],  # (0, 2, 2)
+            # mrf_hp_config["theta_7"],  # (1, 0, 0)
+            # mrf_hp_config["theta_8"],  # (1, 0, 1)
+            # 1e-9,  # (1, 0, 2)
+            # 1e-9,  # (1, 1, 0)
+            # mrf_hp_config["theta_9"],  # (1, 1, 1)
+            # 1e-9,  # (1, 1, 2)
+            # 1e-9,  # (1, 2, 0)
+            # mrf_hp_config["theta_10"],  # (1, 2, 1)
+            # mrf_hp_config["theta_11"],  # (1, 2, 2)
+            # mrf_hp_config["theta_12"],  # (2, 0, 0)
+            # 1e-9,  # (2, 0, 1)
+            # 1e-9,  # (2, 0, 2)
+            # mrf_hp_config["theta_13"],  # (2, 1, 0)
+            # mrf_hp_config["theta_14"],  # (2, 1, 1)
+            # mrf_hp_config["theta_15"],  # (2, 1, 2)
+            # 1e-9,  # (2, 2, 0)
+            # 1e-9,  # (2, 2, 1)
+            # mrf_hp_config["theta_16"],  # (2, 2, 2)
+            # mrf_hp_config["theta_1"],  # (0, 0, 0)
+            # mrf_hp_config["theta_2"],  # (0, 0, 1)
+            # mrf_hp_config["theta_3"],  # (0, 0, 2)
+            # mrf_hp_config["theta_4"],  # (0, 1, 0)
+            # mrf_hp_config["theta_5"],  # (0, 1, 1)
+            # 1e-9,  # (0, 1, 2)
+            # mrf_hp_config["theta_6"],  # (0, 2, 0)
+            # 1e-9,  # (0, 2, 1)
+            # mrf_hp_config["theta_7"],  # (0, 2, 2)
+            # mrf_hp_config["theta_8"],  # (1, 0, 0)
+            # mrf_hp_config["theta_9"],  # (1, 0, 1)
+            # 1e-9,  # (1, 0, 2)
+            # 1e-9,  # (1, 1, 0)
+            # mrf_hp_config["theta_10"],  # (1, 1, 1)
+            # 1e-9,  # (1, 1, 2)
+            # mrf_hp_config["theta_11"],  # (1, 2, 0)
+            # mrf_hp_config["theta_12"],  # (1, 2, 1)
+            # mrf_hp_config["theta_13"],  # (1, 2, 2)
+            # mrf_hp_config["theta_14"],  # (2, 0, 0)
+            # 1e-9,  # (2, 0, 1)
+            # mrf_hp_config["theta_15"],  # (2, 0, 2)
+            # mrf_hp_config["theta_16"],  # (2, 1, 0)
+            # mrf_hp_config["theta_17"],  # (2, 1, 1)
+            # mrf_hp_config["theta_18"],  # (2, 1, 2)
+            # 1e-9,  # (2, 2, 0)
+            # 1e-9,  # (2, 2, 1)
+            # mrf_hp_config["theta_19"],  # (2, 2, 2)
+            1,  # (0, 0, 0)
+            1,  # (0, 0, 1)
+            1,  # (0, 0, 2)
+            1,  # (0, 1, 0)
+            1,  # (0, 1, 1)
+            1,  # (0, 1, 2)
+            1,  # (0, 2, 0)
+            1,  # (0, 2, 1)
+            1,  # (0, 2, 2)
+            1,  # (1, 0, 0)
+            1,  # (1, 0, 1)
+            1,  # (1, 0, 2)
+            1e-5,  # (1, 1, 0)
+            1,  # (1, 1, 1)
+            1e-5,  # (1, 1, 2)
+            1,  # (1, 2, 0)
+            1,  # (1, 2, 1)
+            1,  # (1, 2, 2)
+            1,  # (2, 0, 0)
+            1,  # (2, 0, 1)
+            1,  # (2, 0, 2)
+            1,  # (2, 1, 0)
+            1,  # (2, 1, 1)
+            1,  # (2, 1, 2)
+            1e-5,  # (2, 2, 0)
+            1e-5,  # (2, 2, 1)
+            1,  # (2, 2, 2)
         ]
-        log_ternary_table = np.log(np.array(ternary_table))
+        log_ternary_table = np.log(np.array(ternary_table)) * mrf_hp_config["alpha"]
 
         start = time.time()
         var_names = self.prior_data["relation_variable_name"].tolist()
@@ -181,6 +235,8 @@ class MRFWrapper:
         beliefs = lbp.get_beliefs(lbp_arrays)
         decoded_states = infer.decode_map_states(beliefs)
         results = list(decoded_states.values())[0]
+        # self.logger.info(f"Decoded states: {decoded_states}")
+        # self.logger.info(f"Decoded states values: {list(decoded_states.values())}")
 
         end_time = time.time()
         self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
@@ -242,9 +298,11 @@ if __name__ == "__main__":
             mrf_wrapper = MRFWrapper(
                 config.get("io", "validation_filepath"),
                 tune_lbp_hp=False,
-                num_iters=config.getint("mrf_lbp", "num_iters"),
-                damping=config.getfloat("mrf_lbp", "damping"),
-                temperature=config.getfloat("mrf_lbp", "temperature"),
+                num_iters=config.getint("mrf_lbp", "num_iters", fallback=200),
+                damping=config.getfloat("mrf_lbp", "damping", fallback=0.5),
+                temperature=config.getfloat(
+                    "mrf_lbp", "temperature", fallback=0
+                ),
             )
 
         # Hyperparameter tuning
@@ -258,7 +316,60 @@ if __name__ == "__main__":
             "inference."
         )
 
-        best_hp_config = {}
+        # best_hp_config = {
+        #     'damping': 0.5, # 0.0695296661543231,
+        #     'num_iters': 200, # 199,
+        #     'temperature': 0, # 0.8896138330315201,
+        #     'theta_1': 0.9058725966918472,
+        #     'theta_10': 0.13354982197056503,
+        #     'theta_11': 0.16079163917914419,
+        #     'theta_12': 0.0009543947705691158,
+        #     'theta_13': 0.870613839061775,
+        #     'theta_14': 0.7057694540828392,
+        #     'theta_15': 0.7758444892367712,
+        #     'theta_16': 0.6657233476868561,
+        #     'theta_17': 0.2690787495342974,
+        #     'theta_18': 0.7163924431326891,
+        #     'theta_19': 0.15709317866571978,
+        #     'theta_2': 0.7248030345319738,
+        #     'theta_3': 0.8056633375647393,
+        #     'theta_4': 0.732308333370432,
+        #     'theta_5': 0.37603838713046867,
+        #     'theta_6': 0.7746807931884686,
+        #     'theta_7': 0.8611753300379725,
+        #     'theta_8': 0.9437762017907532,
+        #     'theta_9': 0.6605388913778305,
+        # }
+        # best_hp_config = {
+        #     'damping': 0.5, # 0.0695296661543231,
+        #     'num_iters': 200, # 199,
+        #     'temperature': 0, # 0.8896138330315201,
+        #     'theta_1': 1,
+        #     'theta_10': 1,
+        #     'theta_11': 1,
+        #     'theta_12': 1,
+        #     'theta_13': 1,
+        #     'theta_14': 1,
+        #     'theta_15': 1,
+        #     'theta_16': 1,
+        #     'theta_17': 1,
+        #     'theta_18': 1,
+        #     'theta_19': 1,
+        #     'theta_2': 1,
+        #     'theta_3': 1,
+        #     'theta_4': 1,
+        #     'theta_5': 1,
+        #     'theta_6': 1,
+        #     'theta_7': 1,
+        #     'theta_8': 1,
+        #     'theta_9': 1,
+        # }
+        best_hp_config = {
+            'damping': 0.5, # 0.0695296661543231,
+            'num_iters': 200, # 199,
+            'temperature': 0, # 0.8896138330315201,
+            'alpha': 1
+        }
 
     test_mrf_wrapper = MRFWrapper(
         config.get("io", "test_filepath"), tune_lbp_hp=True
