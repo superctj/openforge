@@ -107,7 +107,7 @@ if __name__ == "__main__":
     logger.info(f"Experiment configuration:\n{printable_config}\n")
 
     train_df, valid_df, test_df = load_icpsr_hyper_hypo_dataset(
-        config.get("io", "input_dir")
+        config.get("io", "input_dir"), rename_columns=True, augment_data=True
     )
     class_weights = compute_class_weight(
         class_weight="balanced",
