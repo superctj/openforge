@@ -35,7 +35,7 @@ class RidgeClassifierTuningWrapper:
             self.valid_df,
             self.test_df,
         ) = load_openforge_icpsr_benchmark(
-            data_dir, multi_class=True, logger=logger
+            data_dir, multi_class=True, load_augmented_data=True, logger=logger
         )
 
         self.clf = None
