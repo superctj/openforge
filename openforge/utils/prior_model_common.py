@@ -297,7 +297,10 @@ def load_openforge_icpsr_split(
 
 
 def load_openforge_icpsr_benchmark(
-    data_dir: str, logger: logging.Logger, multi_class: bool = True
+    data_dir: str,
+    logger: logging.Logger,
+    multi_class: bool = True,
+    load_augmented_data: bool = False,
 ) -> tuple[
     np.ndarray,
     np.ndarray,
@@ -321,15 +324,26 @@ def load_openforge_icpsr_benchmark(
     """
 
     if multi_class:
-        train_filepath = os.path.join(
-            data_dir, "openforge_icpsr_hyper_hypo_training.csv"
-        )
-        valid_filepath = os.path.join(
-            data_dir, "openforge_icpsr_hyper_hypo_validation.csv"
-        )
-        test_filepath = os.path.join(
-            data_dir, "openforge_icpsr_hyper_hypo_test.csv"
-        )
+        if load_augmented_data:
+            train_filepath = os.path.join(
+                data_dir, "openforge_icpsr_hyper_hypo_training_augmented.csv"
+            )
+            valid_filepath = os.path.join(
+                data_dir, "openforge_icpsr_hyper_hypo_validation_augmented.csv"
+            )
+            test_filepath = os.path.join(
+                data_dir, "openforge_icpsr_hyper_hypo_test_augmented.csv"
+            )
+        else:
+            train_filepath = os.path.join(
+                data_dir, "openforge_icpsr_hyper_hypo_training.csv"
+            )
+            valid_filepath = os.path.join(
+                data_dir, "openforge_icpsr_hyper_hypo_validation.csv"
+            )
+            test_filepath = os.path.join(
+                data_dir, "openforge_icpsr_hyper_hypo_test.csv"
+            )
     else:
         train_filepath = os.path.join(
             data_dir, "openforge_icpsr_hyper_training.csv"
