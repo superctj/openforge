@@ -134,7 +134,9 @@ class MRFWrapper:
             1e-5,  # (2, 2, 1)
             1,  # (2, 2, 2)
         ]
-        log_ternary_table = np.log(np.array(ternary_table)) * mrf_hp_config["alpha"]
+        log_ternary_table = (
+            np.log(np.array(ternary_table)) * mrf_hp_config["alpha"]
+        )
 
         start = time.time()
         var_names = self.prior_data["relation_variable_name"].tolist()
@@ -236,7 +238,7 @@ class MRFWrapper:
         decoded_states = infer.decode_map_states(beliefs)
         results = list(decoded_states.values())[0]
         # self.logger.info(f"Decoded states: {decoded_states}")
-        # self.logger.info(f"Decoded states values: {list(decoded_states.values())}")
+        # self.logger.info(f"Decoded states values: {list(decoded_states.values())}") # noqa: E501
 
         end_time = time.time()
         self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
@@ -365,10 +367,10 @@ if __name__ == "__main__":
         #     'theta_9': 1,
         # }
         best_hp_config = {
-            'damping': 0.5, # 0.0695296661543231,
-            'num_iters': 200, # 199,
-            'temperature': 0, # 0.8896138330315201,
-            'alpha': 1
+            "damping": 0.5,  # 0.0695296661543231,
+            "num_iters": 200,  # 199,
+            "temperature": 0,  # 0.8896138330315201,
+            "alpha": 1,
         }
 
     test_mrf_wrapper = MRFWrapper(
