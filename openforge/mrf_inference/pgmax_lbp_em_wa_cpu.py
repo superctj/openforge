@@ -3,7 +3,7 @@ import multiprocessing
 import os
 
 multiprocessing.set_start_method("spawn", force=True)
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""
 import time
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -139,7 +139,7 @@ class MRFWrapper:
             mrf_hp_config["delta"],  # 1, 0, 0
             1e-9,  # 1, 0, 1
             1e-9,  # 1, 1, 0
-            mrf_hp_config["epsilon"],  # 1, 1, 1
+            1e-9,  # mrf_hp_config["epsilon"],  # 1, 1, 1
         ]
         log_ternary_table = np.log(np.array(ternary_table))
         variables_for_ternary_factors = []
@@ -169,8 +169,13 @@ class MRFWrapper:
     ) -> dict:
         prior_filepath = os.path.join(self.prior_dir, prior_filename)
         prior_df = pd.read_json(prior_filepath)
-        fg = self.create_mrf(prior_df, mrf_hp_config)
+        # first_row = prior_df.iloc[0]
 
+        # Only run inference if the test instance is predicted as positive
+        # if first_row["prediction"] == 0:
+        #     return None, -1
+
+        fg = self.create_mrf(prior_df, mrf_hp_config)
         lbp = infer.build_inferer(fg.bp_state, backend="bp")
         lbp_arrays = lbp.init()
 
@@ -215,8 +220,12 @@ class MRFWrapper:
 
             for future in as_completed(futures):
                 target_id, result = future.result()
-                all_results[target_id] = result
+                # logger.info(f"target_id, result: {target_id}, {result}")
 
+                if target_id is not None:
+                    all_results[target_id] = int(result)
+
+        # logger.info(f"All results: {all_results}")
         end_time = time.time()
         self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
 
@@ -305,14 +314,14 @@ if __name__ == "__main__":
         )
 
         best_hp_config = {
-            "alpha": 0.8115919686913933,
-            "beta": 0.042933357094144475,
-            "damping": 0.38131944113290556,
-            "delta": 0.511263261473691,
-            "epsilon": 0.018506207697917325,
-            "gamma": 0.17959438539192837,
-            "num_iters": 982,
-            "temperature": 0.8730783883397759,
+            "alpha": 0.3163755552654104,
+            "beta": 0.5332322301219835,
+            # "damping": 0.02170897897556423,
+            "delta": 0.7214512689066233,
+            "epsilon": 0.31628815459566506,
+            "gamma": 0.09126672146562628,
+            #     'num_iters': 444,
+            #     'temperature': 0.3338919742857718,
         }
         logger.info(f"Best hyperparameters:\n{best_hp_config}")
 

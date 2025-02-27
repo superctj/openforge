@@ -13,6 +13,6 @@ source ~/.bash_profile
 conda activate pgmax-gpu
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
 
-python ./openforge/mrf_inference/pgmax_lbp_icpsr_hyper.py \
-    --config_path=./openforge/mrf_inference/tuning_exp_configs/icpsr/0_shot/gemma-2-9b-it.ini \
+python ./openforge/mrf_inference/pgmax_lbp_icpsr_hyper_hypo.py \
+    --config_path=./openforge/mrf_inference/tuning_exp_configs/icpsr_hyper_hypo/0_shot/gemma-2-9b-it.ini \
     --mode=hp_tuning

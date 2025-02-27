@@ -367,10 +367,10 @@ if __name__ == "__main__":
         #     'theta_9': 1,
         # }
         best_hp_config = {
-            "damping": 0.5,  # 0.0695296661543231,
-            "num_iters": 200,  # 199,
-            "temperature": 0,  # 0.8896138330315201,
-            "alpha": 1,
+            'damping': 0.998272307513778,
+            'num_iters': 271,
+            'temperature': 0.12844561528199389,
+            'alpha': 0.11716047224357475
         }
 
     test_mrf_wrapper = MRFWrapper(

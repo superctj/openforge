@@ -1,5 +1,7 @@
 import argparse
 import os
+
+# os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Enable when running on single CPU
 import time
 
 import numpy as np
@@ -161,8 +163,12 @@ class MRFWrapper:
     ) -> dict:
         prior_filepath = os.path.join(self.prior_dir, prior_filename)
         prior_df = pd.read_json(prior_filepath)
-        fg = self.create_mrf(prior_df, mrf_hp_config)
 
+        start = time.time()
+        fg = self.create_mrf(prior_df, mrf_hp_config)
+        constr_time = time.time() - start
+
+        start = time.time()
         lbp = infer.build_inferer(fg.bp_state, backend="bp")
         lbp_arrays = lbp.init()
 
@@ -183,25 +189,32 @@ class MRFWrapper:
 
         beliefs = lbp.get_beliefs(lbp_arrays)
         decoded_states = infer.decode_map_states(beliefs)
-        results = list(decoded_states.values())[0]
+        inference_time = time.time() - start
 
+        results = list(decoded_states.values())[0]
         target_row = prior_df.iloc[0]
         target_id = (target_row["l_id"], target_row["r_id"])
 
-        return target_id, results[target_id]
+        return target_id, results[target_id], constr_time, inference_time
 
     # LBP inference
     def run_inference(self, mrf_hp_config: dict) -> dict:
-        start_time = time.time()
         all_results = {}
+        total_constr_time = 0
+        total_inference_time = 0
 
         for f in os.listdir(self.prior_dir):
             if f.endswith(".json"):
-                target_id, result = self.run_single_inference(f, mrf_hp_config)
-                all_results[target_id] = result
+                target_id, result, constr_time, inference_time = (
+                    self.run_single_inference(f, mrf_hp_config)
+                )
 
-        end_time = time.time()
-        self.logger.info(f"Inference time: {end_time - start_time:.1f} seconds")
+                all_results[target_id] = result
+                total_constr_time += constr_time
+                total_inference_time += inference_time
+
+        self.logger.info(f"Construction time: {total_constr_time:.1f} seconds")
+        self.logger.info(f"Inference time: {total_inference_time:.1f} seconds")
 
         return all_results
 
@@ -292,7 +305,7 @@ if __name__ == "__main__":
             "delta": 0.511263261473691,
             "epsilon": 0.018506207697917325,
             "gamma": 0.17959438539192837,
-            "num_iters": 982,
+            "num_iters": 200,  # 982,
             "temperature": 0.8730783883397759,
         }
         logger.info(f"Best hyperparameters:\n{best_hp_config}")
