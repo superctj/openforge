@@ -250,6 +250,129 @@ def load_icpsr_hyper_hypo_dataset(data_dir: str, rename_columns: bool = True, au
     return train_df, valid_df, test_df
 
 
+def reverse_label_first_stage(row):
+    if row["label"] == 0:
+        return 0
+    else:
+        return 1
+
+
+def prepare_first_stage_data(df: pd.DataFrame, augment_data: bool):
+    first_stage_df = df.copy()
+    first_stage_df["label"] = first_stage_df.apply(
+        reverse_label_first_stage, axis=1
+    )
+
+    if augment_data:
+        df_reversed = first_stage_df.copy()
+
+        # Swap the concept columns
+        df_reversed["concept_1"], df_reversed["concept_2"] = first_stage_df["concept_2"], first_stage_df["concept_1"]
+
+        # Concatenate the original and reversed data
+        first_stage_df = pd.concat(
+            [first_stage_df, df_reversed], ignore_index=True
+        )
+
+        # Optionally shuffle the data
+        first_stage_df = first_stage_df.sample(
+            frac=1, random_state=42
+        ).reset_index(drop=True)
+
+    return first_stage_df
+
+
+def prepare_second_stage_data(df: pd.DataFrame, augment_data: bool):
+    second_stage_df = df.copy()
+    second_stage_df = second_stage_df[second_stage_df["label"] != 0]
+    second_stage_df["label"] = second_stage_df["label"].apply(
+        lambda x: (x + 1) % 2 # 1 -> 0, 2 -> 1
+    )
+
+    if augment_data:
+        df_reversed = second_stage_df.copy()
+
+        # Swap the concept columns
+        df_reversed["concept_1"], df_reversed["concept_2"] = second_stage_df["concept_2"], second_stage_df["concept_1"]
+
+        df_reversed["label"] = df_reversed.apply(
+            lambda x: (x["label"] + 1) % 2, axis=1
+        )
+
+        # Concatenate the original and reversed data
+        second_stage_df = pd.concat(
+            [second_stage_df, df_reversed], ignore_index=True
+        )
+
+        # Optionally shuffle the data
+        second_stage_df = second_stage_df.sample(
+            frac=1, random_state=42
+        ).reset_index(drop=True)
+
+    return second_stage_df
+
+
+def load_icpsr_hyper_hypo_two_stages_dataset(
+    data_dir: str,
+    rename_columns: bool = True,
+    augment_data: bool = True
+):
+    columns_needed = [
+        "concept_1",
+        "concept_2",
+        "relation_variable_name",
+        "relation_variable_label",
+    ]
+
+    train_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_hypo_training.csv")
+    )
+    train_df = train_df[columns_needed]
+
+    valid_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_hypo_validation.csv")
+    )
+    valid_df = valid_df[columns_needed]
+
+    test_df = pd.read_csv(
+        os.path.join(data_dir, "openforge_icpsr_hyper_hypo_test.csv")
+    )
+    test_df = test_df[columns_needed]
+
+    if rename_columns:
+        train_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+        valid_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+        test_df.rename(
+            columns={"relation_variable_label": "label"}, inplace=True
+        )
+
+    first_stage_train_df = prepare_first_stage_data(
+        train_df, augment_data=augment_data
+    )
+    first_stage_valid_df = prepare_first_stage_data(
+        valid_df, augment_data=augment_data
+    )
+    first_stage_test_df = prepare_first_stage_data(
+        test_df, augment_data=augment_data
+    )
+
+    second_stage_train_df = prepare_second_stage_data(
+        train_df, augment_data=augment_data
+    )
+    second_stage_valid_df = prepare_second_stage_data(
+        valid_df, augment_data=augment_data
+    )
+    second_stage_test_df = prepare_second_stage_data(
+        test_df, augment_data=augment_data
+    )
+
+    return (first_stage_train_df, first_stage_valid_df, first_stage_test_df), (second_stage_train_df, second_stage_valid_df, second_stage_test_df)
+
+
 def flatten_list(lst):
     for item in lst:
         if isinstance(item, list):
