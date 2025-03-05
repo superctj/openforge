@@ -329,10 +329,10 @@ def load_openforge_icpsr_benchmark(
                 data_dir, "openforge_icpsr_hyper_hypo_training_augmented.csv"
             )
             valid_filepath = os.path.join(
-                data_dir, "openforge_icpsr_hyper_hypo_validation_augmented.csv"
+                data_dir, "openforge_icpsr_hyper_hypo_validation.csv"
             )
             test_filepath = os.path.join(
-                data_dir, "openforge_icpsr_hyper_hypo_test_augmented.csv"
+                data_dir, "openforge_icpsr_hyper_hypo_test.csv"
             )
         else:
             train_filepath = os.path.join(
