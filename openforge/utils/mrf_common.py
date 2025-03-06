@@ -235,3 +235,74 @@ def evaluate_fixed_prior_multi_class_inference_results(
         logger.info(f"MRF recall: {mrf_recall:.2f}")
 
     return mrf_f1_score, mrf_accuracy, mrf_precision, mrf_recall
+
+
+def evaluate_two_stage_inference_results(
+    prior_data: pd.DataFrame,
+    results: dict,
+    stage: str,
+    log_predictions: bool = False
+):
+    if log_predictions:
+        logger = get_logger()
+
+    y_true, y_prior, y_pred = [], [], []
+
+    for row in prior_data.itertuples():
+        if log_predictions:
+            logger.info("-" * 80)
+
+        if stage == "first":
+            var_label = int(row.first_stage_label)
+            prior_pred = int(row.first_stage_prior_prediction)
+            confdc_score = row.first_stage_prior_confidence_score
+            var_name = row.relation_variable_name
+        elif stage == "second":
+            var_label = int(row.second_stage_label)
+            prior_pred = int(row.second_stage_prior_prediction)
+            confdc_score = row.second_stage_prior_confidence_score
+            var_name = row.second_stage_relation_variable_name
+        else:
+            raise ValueError("Invalid stage. Must be 'first' or 'second'.")
+        
+        y_true.append(var_label)
+        log_msg = (
+            f"Prior for variable {var_name}: ({prior_pred}, "
+            f"{confdc_score:.2f})"
+        )
+        y_prior.append(prior_pred)
+        pred = results[var_name]
+        y_pred.append(pred)
+
+        if log_predictions:
+            logger.info(log_msg)
+            logger.info(f"Posterior for variable {var_name}: {pred}")
+            logger.info(f"True label for variable {var_name}: {var_label}")
+
+            if prior_pred != var_label:
+                logger.info("Prior prediction is incorrect.")
+            if pred != var_label:
+                logger.info("Posterior prediction is incorrect.")
+
+    if log_predictions:
+        logger.info("-" * 80)
+        logger.info(f"Number of test instances: {len(prior_data)}")
+        logger.info(
+            f"Prior test accuracy: {accuracy_score(y_true, y_prior):.3f}"
+        )
+        logger.info(f"Prior F1 score: {f1_score(y_true, y_prior):.3f}")
+        logger.info(f"Prior precision: {precision_score(y_true, y_prior):.3f}")
+        logger.info(f"Prior recall: {recall_score(y_true, y_prior):.3f}")
+
+    mrf_accuracy = accuracy_score(y_true, y_pred)
+    mrf_f1_score = f1_score(y_true, y_pred)
+    mrf_precision = precision_score(y_true, y_pred)
+    mrf_recall = recall_score(y_true, y_pred)
+
+    if log_predictions:
+        logger.info(f"MRF test accuracy: {mrf_accuracy:.3f}")
+        logger.info(f"MRF F1 score: {mrf_f1_score:.3f}")
+        logger.info(f"MRF precision: {mrf_precision:.3f}")
+        logger.info(f"MRF recall: {mrf_recall:.3f}")
+
+    return mrf_f1_score, mrf_accuracy, mrf_precision, mrf_recall
