@@ -84,4 +84,26 @@ We provide the following datasets for training prior models and running MRF infe
     python google_gemma_lora_icpsr.py \
         --config_path=./exp_configs/icpsr/qwen2.5-7b-instruct_lora.ini
     ```
-  
+
+## Citing This Repository
+If you find this repository useful for your work, please cite the following BibTeX:
+
+```bibtex
+@article{DBLP:journals/pvldb/CongNXJ25,
+  author       = {Tianji Cong and
+                  Fatemeh Nargesian and
+                  Junjie Xing and
+                  H. V. Jagadish},
+  title        = {OpenForge: Probabilistic Metadata Integration},
+  journal      = {Proc. {VLDB} Endow.},
+  volume       = {18},
+  number       = {9},
+  pages        = {2914--2927},
+  year         = {2025},
+  url          = {https://www.vldb.org/pvldb/vol18/p2914-cong.pdf},
+  doi          = {10.14778/3746405.3746417},
+  timestamp    = {Wed, 17 Dec 2025 16:44:24 +0100},
+  biburl       = {https://dblp.org/rec/journals/pvldb/CongNXJ25.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+```
